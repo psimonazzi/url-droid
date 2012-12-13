@@ -154,19 +154,15 @@ public class HttpClient {
                 actualUrl += "?" + query;
         }
 		
-        String requestData = null;
         if (entity == null) {
             if (bodyParams != null) {
-                requestData = "";
+                entity = "";
                 for (Map.Entry<String, String> e : bodyParams.entrySet())
-                    requestData += e.getKey() + "=" + e.getValue() + "&";
-                requestData = requestData.replaceFirst("&$", "");
-                if (requestData.equals(""))
-                    requestData = null;
+                    entity += e.getKey() + "=" + e.getValue() + "&";
+                entity = entity.replaceFirst("&$", "");
+                if (entity.equals(""))
+                    entity = null;
             }
-        }
-        else {
-            requestData = entity;
         }
         
         // HTTP Authentication
@@ -309,6 +305,7 @@ public class HttpClient {
         }
         
 		// Throw an exception if the HTTP status was not 2XX and the user has not opted to suppress the exception
+        // If cache support is enabled we may get a 304 status, which should be handled in the exception catch
         if (!noExceptionOnServerError && (responseCode  / 100 != 2)) {
             throw new RuntimeException(responseCode + " " + responseReasonPhrase);
         }
