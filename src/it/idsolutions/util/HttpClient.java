@@ -42,9 +42,11 @@ import com.google.gson.JsonSerializer;
 
 /**
  * A wrapper around HttpURLConnection, which is the API to make HTTP requests on
- * Android officially recommended by Google.<br/>
+ * Android officially recommended by Google.
+ * <p>
  * Supports the JSON format for serializing/deserializing content, Gzip
- * compression, Basic auth, HTTPS, HTTP and SOCKS proxies.<br/>
+ * compression, Basic auth, HTTPS, HTTP and SOCKS proxies.
+ * <p>
  * Each request should use its own instance of this class, unless all settings
  * are exactly the same.
  * 
@@ -80,12 +82,13 @@ public class HttpClient {
      * Returns a new instance bound to the specified URL. The URL must be
      * already encoded (according to RFC3986 or the obsoleted RFC2396 for the
      * path part and the application/x-www-form-urlencoded format for the query
-     * part).<br/>
+     * part).
+     * <p>
      * The URL can contain path params, which can then be set using
      * #addPathParam(String,String). Path params are specified as '{name}',
      * i.e.: <code>'/resource/{id}/1'</code>.
      * 
-     * @param url
+     * @param url The request URL, alredy encoded
      */
     public HttpClient(String url) {
         try {
@@ -190,16 +193,12 @@ public class HttpClient {
         // Use proxy if needed
         // By default, HttpURLConnection class will connect directly to the
         // origin server (RFC2616).
-        // TODO Both HTTP and SOCKS proxies are supported, need to choose
+        // Both HTTP and SOCKS proxies are supported, using HTTP by default
         if (proxy == null) {
             String proxyHost = System.getProperty("http.proxyHost");
             String proxyPortString = System.getProperty("http.proxyPort");
             if (proxyHost != null && !proxyHost.equals("")
                     && proxyPortString != null && !proxyPortString.equals("")) {
-                // client.getHostConfiguration().setProxy(proxyHost, proxyPort);
-                // Settings.System.putString(getContentResolver(),
-                // Settings.System.HTTP_PROXY, proxyHost + ":" +
-                // proxyPortString);
                 int proxyPort = Integer.parseInt(proxyPortString);
                 proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(
                         proxyHost, proxyPort));
@@ -261,7 +260,7 @@ public class HttpClient {
                         });
             }
 
-            setHeader("User-Agent", "HttpClient/" + VERSION);
+            setHeader("User-Agent", "UrlDroid/" + VERSION);
 
             if (headers != null) {
                 for (Map.Entry<String, String> e : headers.entrySet())
@@ -306,8 +305,6 @@ public class HttpClient {
                     try {
                         this.responseContent = deserialize(content);
                     } catch (Exception ex) {
-                        // Log.e("HTTP CLIENT " + VERSION,
-                        // "Cannot deserialize response. ", ex);
                         throw new RuntimeException(ex);
                     }
                 } else {
@@ -319,8 +316,6 @@ public class HttpClient {
             this.responseReasonPhrase = conn.getResponseMessage();
             // TODO get response headers if we want to do something with them
         } catch (Exception ex) {
-            // Log.e("HTTP CLIENT " + VERSION, "Cannot execute request for url "
-            // + url + " ", ex);
             throw new RuntimeException(ex);
         } finally {
             if (conn != null)
@@ -341,7 +336,8 @@ public class HttpClient {
 
 
     /**
-     * Add a query param to send in the request URL.<br/>
+     * Add a query param to send in the request URL.
+     * <p>
      * Used for GET requests. Standard does not forbid use with POST or PUT
      * requests, but it's not best practice.
      * 
@@ -366,7 +362,8 @@ public class HttpClient {
 
 
     /**
-     * Add a query param to send in the request body.<br/>
+     * Add a query param to send in the request body.
+     * <p>
      * Used for POST or PUT requests. Standard does not forbid use with GET
      * requests, but it's not best practice.
      * 
@@ -391,7 +388,8 @@ public class HttpClient {
 
 
     /**
-     * Set a param in the URL path of the request.<br/>
+     * Set a param in the URL path of the request.
+     * <p>
      * The URL path will be modified by sustituting the param name with its
      * value.
      * 
@@ -459,7 +457,8 @@ public class HttpClient {
 
 
     /**
-     * Set the request entity.<br/>
+     * Set the request entity.
+     * <p>
      * This method is used for sending data serialized as JSON, XML, etc. To
      * send a query string in the request body, use #entityUrlEncode(String).
      * 
@@ -495,7 +494,7 @@ public class HttpClient {
      * @param type
      *            Object type, used as an hint for the serializer. This may be
      *            needed when sending bare generics collections, i.e.
-     *            <code>new TypeToken<Collection<myDataType>>(){}.getType()</code>
+     *            <code>new TypeToken&lt;Collection&lt;myDataType&gt;&gt;(){}.getType()</code>
      * @return
      * @throws RuntimeException
      *             When the given object cannot be serialized
@@ -544,7 +543,8 @@ public class HttpClient {
 
 
     /**
-     * Set the expected type of the response content.<br/>
+     * Set the expected type of the response content.
+     * <p>
      * In the special case that the type is JSONObject.class, Douglas
      * Crockford's JSON deserializer will be used. In all other cases the GSON
      * deserializer will be used.
@@ -552,7 +552,7 @@ public class HttpClient {
      * @param type
      *            Object type, used as an hint for the deserializer. This may be
      *            needed with bare generics collections, i.e.
-     *            <code>new TypeToken<Collection<myDataType>>(){}.getType()</code>
+     *            <code>new TypeToken&lt;Collection&lt;myDataType&gt;&gt;(){}.getType()</code>
      * @return
      */
     public final HttpClient returnType(Type type) {
@@ -574,8 +574,9 @@ public class HttpClient {
 
 
     /**
-     * Set the request timeout.<br/>
-     * If a timeout is not explicitly set, #DEFAULT_TIMEOUT_MS will be used.
+     * Set the request timeout.
+     * <p>
+     * If a timeout is not explicitly set, {@code DEFAULT_TIMEOUT_MS} will be used.
      * 
      * @param timeoutMillis
      *            The request timeout in milliseconds
@@ -588,10 +589,11 @@ public class HttpClient {
 
 
     /**
-     * Set HTTP Basic authorization credentials.<br/>
+     * Set HTTP Basic authorization credentials.
+     * <p>
      * Credentials can also be specified as system properties, but this method
-     * will override them.<br/>
-     * If credentials are not set, the request will not enable authorization
+     * will override them. If credentials are not set, the request will not
+     * enable authorization
      * 
      * @param user
      *            User (can also be specified as system property 'http.user')
@@ -608,14 +610,16 @@ public class HttpClient {
 
 
     /**
-     * Set an HTTP or SOCKS proxy to use for the request.<br/>
+     * Set an HTTP or SOCKS proxy to use for the request.
+     * <p>
      * A proxy will also be used if the proxy host and port are specified as
      * system properties, respectively 'http.proxyHost' and 'http.proxyPort'. In
      * this case the proxy will be of type HTTP. If a proxy is specified in this
-     * way, this method will override it.<br/>
+     * way, this method will override it.
+     * <p>
      * If the proxy requires Basic authorization, the credentials can also be
      * set here, otherwise leave them null. Credentials can also be specified as
-     * system properties, but this method will override them.<br/>
+     * system properties, but this method will override them.
      * 
      * @param proxy
      *            Proxy
@@ -688,7 +692,7 @@ public class HttpClient {
 
 
     /**
-     * Returns the HTTP status code of the response.<br/>
+     * Returns the HTTP status code of the response.
      * This method must be called after the request has been executed.
      * 
      * @return
@@ -699,7 +703,7 @@ public class HttpClient {
 
 
     /**
-     * Returns the content of the HTTP response.<br/>
+     * Returns the content of the HTTP response.
      * This method must be called after the request has been executed.
      * 
      * @return The response content as a deserialized object of the type
@@ -712,7 +716,8 @@ public class HttpClient {
 
     /**
      * Returns the HTTP reason phrase of the response, which is a textual
-     * description of the status code.<br/>
+     * description of the status code.
+     * <p>
      * This method must be called after the request has been executed.
      * 
      * @return
