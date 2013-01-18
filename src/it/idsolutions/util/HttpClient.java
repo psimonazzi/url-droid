@@ -19,6 +19,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.net.ssl.HostnameVerifier;
@@ -53,7 +54,7 @@ import com.google.gson.JsonSerializer;
  * @author ps
  */
 public class HttpClient {
-    public static final String VERSION = "0.1.1";
+    public static final String VERSION = "0.1.3";
     public static final String APPLICATION_JSON_UTF8 = "application/json; charset=UTF-8";
     public static final String APPLICATION_FORM_URLENCODED_UTF8 = "application/x-www-form-urlencoded; charset=UTF-8";
     public static final int DEFAULT_TIMEOUT_MS = 20000;
@@ -69,6 +70,7 @@ public class HttpClient {
     private int responseCode;
     private Object responseContent;
     private String responseReasonPhrase;
+    private Map<String, List<String>> responseHeaders;
     private Type deserializedResponseType;
     private boolean noExceptionOnServerError = false;
     private String user;
@@ -143,6 +145,7 @@ public class HttpClient {
         responseCode = 0;
         responseContent = null;
         responseReasonPhrase = null;
+        responseHeaders = null;
 
         String actualUrl = url.toString();
         if (pathParams != null) {
@@ -179,8 +182,8 @@ public class HttpClient {
             password = System.getProperty("http.password");
         if (user != null && !user.equals("") && password != null
                 && !password.equals("")) {
-            String base64Encoded = new String(Base64.encode(new String(user
-                    + ":" + password).getBytes(), Base64.DEFAULT)).trim();
+            String base64Encoded = Base64.encodeString(
+                    user + ":" + password).trim();
             setHeader("Authorization", "Basic " + base64Encoded);
         }
         // Or use global auth for this url
@@ -212,9 +215,8 @@ public class HttpClient {
                 proxyPassword = System.getProperty("http.proxyPassword");
             if (proxyUser != null && !proxyUser.equals("")
                     && proxyPassword != null && !proxyPassword.equals("")) {
-                String base64Encoded = new String(Base64.encode(new String(
-                        proxyUser + ":" + proxyPassword).getBytes(),
-                        Base64.DEFAULT)).trim();
+                String base64Encoded = Base64.encodeString(
+                        proxyUser + ":" + proxyPassword).trim();
                 setHeader("Proxy-Authorization", "Basic " + base64Encoded); // http://freesoft.org/CIE/RFC/2068/195.htm
             }
         }
@@ -314,7 +316,7 @@ public class HttpClient {
             }
             this.responseCode = conn.getResponseCode();
             this.responseReasonPhrase = conn.getResponseMessage();
-            // TODO get response headers if we want to do something with them
+            this.responseHeaders = conn.getHeaderFields();
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         } finally {
@@ -734,6 +736,17 @@ public class HttpClient {
      */
     public final URL url() {
         return url;
+    }
+    
+    
+    /**
+     * Returns the HTTP headers of the response.
+     * This method must be called after the request has been executed.
+     * 
+     * @return
+     */
+    public final Map<String, List<String>> responseHeaders() {
+        return responseHeaders;
     }
 
 

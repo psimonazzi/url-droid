@@ -1,7 +1,6 @@
 package test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import it.idsolutions.util.HttpClient;
 
 import java.io.IOException;
@@ -39,40 +38,12 @@ public class HttpClientTest {
         if (httpServer != null)
             httpServer.stop(0);
         httpServer = HttpServer.create(address, 0);
-        /*httpServer.createContext("/", new HttpHandler() {
-            @Override
-            public void handle(HttpExchange exchange) throws IOException {
-                System.out.println("Request: ");
-                System.out.println(exchange.getRequestMethod() + " "
-                        + exchange.getRequestURI());
-                Headers requestHeaders = exchange.getRequestHeaders();
-                for (Entry<String, List<String>> header : requestHeaders
-                        .entrySet()) {
-                    System.out.println(header.getKey() + ": "
-                            + header.getValue());
-                }
-                Reader reader = new BufferedReader(new InputStreamReader(
-                        exchange.getRequestBody(), "UTF-8"), 8192);
-                StringWriter writer = new StringWriter();
-                String r;
-                int l;
-                char[] buf = new char[8192];
-                while ((l = reader.read(buf)) != -1) {
-                    writer.write(buf, 0, l);
-                }
-                r = writer.toString();
-                System.out.println();
-                System.out.println(r);
-                exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, 0);
-                exchange.close();
-            }
-        });
-        httpServer.start();*/
     }
 
 
     @After
     public void tearDown() throws Exception {
+        Thread.sleep(300);
         if (httpServer != null)
             httpServer.stop(0);
     }
@@ -89,19 +60,20 @@ public class HttpClientTest {
                 assertEquals(HttpClient.APPLICATION_JSON_UTF8, 
                         exchange.getRequestHeaders().get("Content-Type").get(0));
 
+                exchange.getResponseHeaders().add("Server", "Test");
                 exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, 0);
                 exchange.close();
             }
         });
         httpServer.start();
-        Thread.sleep(500);
         
         HttpClient c = new HttpClient("http://localhost:3000/test/{id}")
                 .contentType(HttpClient.APPLICATION_JSON_UTF8).addPathParam(
                         "id", "1 2")
                 .addQueryParam("p1", "a b")
                 .get();
-        assertTrue(c.code() == HttpURLConnection.HTTP_OK);
+        assertEquals(HttpURLConnection.HTTP_OK, c.code());
+        assertEquals("Test", c.responseHeaders().get("Server").get(0));
     }
     
     
@@ -131,7 +103,7 @@ public class HttpClientTest {
                     request = URLDecoder.decode(requestEncoded, "UTF-8");
                 assertEquals("id=1 2 3&param2=\u20AC", request);
                 
-                exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, 0);
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_CREATED, 0);
                 
                 String response = "true";
                 exchange.getResponseBody().write(response.getBytes());
@@ -140,14 +112,13 @@ public class HttpClientTest {
             }
         });
         httpServer.start();
-        Thread.sleep(1000);
         
         HttpClient c = new HttpClient("http://localhost6:3000/testPOST")
                 .contentType(HttpClient.APPLICATION_FORM_URLENCODED_UTF8)
                 .addBodyParam("id", "1 2 3")
                 .addBodyParam("param2", "\u20AC")
                 .post();
-        assertTrue(c.code() == HttpURLConnection.HTTP_OK);
+        assertEquals(HttpURLConnection.HTTP_CREATED, c.code());
         assertEquals("true", (String)c.content());
     }
 
