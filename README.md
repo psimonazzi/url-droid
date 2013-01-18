@@ -33,4 +33,4 @@ TODO Usage examples
 
 ## License
 
-Licensed under the MIT License (see `LICENSE` file). `Base64.java` is part of the Android source code, licensed under the Apache License Version 2.0.
+Licensed under the MIT License (see `LICENSE` file). Uses the Base64 implementation by [Christian d'Heureuse](http://www.source-code.biz/base64coder/java/).
