@@ -21,9 +21,9 @@ It provides convenient ways to craft GET, POST and other kinds of requests, and 
 
 The project is in Eclipse format, but it is trivial to integrate in other build systems or IDEs, as UrlDroid consists of a single Java class.
 
-The only dependencies are the [Google GSON library](https://code.google.com/p/google-gson/) and Douglas Crockford's reference [JSON-Java library](https://github.com/douglascrockford/JSON-java). Both are included in the project as jars. Android 4's `Base64` class source is included here as a quick way to add compatibility with the JVM: this will be handled in a cleaner way in a future release.
+The only dependencies are the [Google GSON library](https://code.google.com/p/google-gson/) and Douglas Crockford's reference [JSON-Java library](https://github.com/douglascrockford/JSON-java). Both are included in the project as jars.
 
-Unit tests are in JUnit 4 format.
+Unit tests are in JUnit 4 style.
 
 
 ## Usage
