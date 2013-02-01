@@ -54,7 +54,7 @@ import com.google.gson.JsonSerializer;
  * @author ps
  */
 public class HttpClient {
-    public static final String VERSION = "0.1.3";
+    public static final String VERSION = "0.2.0";
     public static final String APPLICATION_JSON_UTF8 = "application/json; charset=UTF-8";
     public static final String APPLICATION_FORM_URLENCODED_UTF8 = "application/x-www-form-urlencoded; charset=UTF-8";
     public static final int DEFAULT_TIMEOUT_MS = 20000;
@@ -78,6 +78,8 @@ public class HttpClient {
     private String proxyUser;
     private String proxyPassword;
     private Proxy proxy;
+    private SSLContext sslContext;
+    private HostnameVerifier hostnameVerifier;
 
 
     /**
@@ -232,34 +234,46 @@ public class HttpClient {
 
             // HTTPS
             if (conn instanceof HttpsURLConnection) {
-                SSLContext sslContext = SSLContext.getInstance("TLS");
-                // Trust anyone
-                TrustManager tm = new X509TrustManager() {
-                    public void checkClientTrusted(X509Certificate[] chain,
-                            String authType) throws CertificateException {
-                    }
-
-
-                    public void checkServerTrusted(X509Certificate[] chain,
-                            String authType) throws CertificateException {
-                    }
-
-
-                    public X509Certificate[] getAcceptedIssuers() {
-                        return null;
-                    }
-                };
-                sslContext.init(null, new TrustManager[] { tm }, null);
-                ((HttpsURLConnection) conn).setSSLSocketFactory(sslContext
-                        .getSocketFactory());
-                ((HttpsURLConnection) conn)
-                        .setHostnameVerifier(new HostnameVerifier() {
-                            @Override
-                            public boolean verify(String arg0, SSLSession arg1) {
-                                // Allow all
-                                return true;
-                            }
-                        });
+                if (sslContext == null) {
+                    SSLContext sc = SSLContext.getInstance("TLS");
+                    // Trust anyone
+                    TrustManager tm = new X509TrustManager() {
+                        public void checkClientTrusted(X509Certificate[] chain,
+                                String authType) throws CertificateException {
+                        }
+    
+    
+                        public void checkServerTrusted(X509Certificate[] chain,
+                                String authType) throws CertificateException {
+                        }
+    
+    
+                        public X509Certificate[] getAcceptedIssuers() {
+                            return null;
+                        }
+                    };
+                    sc.init(null, new TrustManager[] { tm }, null);
+                    ((HttpsURLConnection) conn).setSSLSocketFactory(
+                            sc.getSocketFactory());
+                }
+                else {
+                    ((HttpsURLConnection) conn).setSSLSocketFactory(
+                            sslContext.getSocketFactory());
+                }
+                
+                if (hostnameVerifier == null) {
+                    ((HttpsURLConnection) conn).setHostnameVerifier(
+                            new HostnameVerifier() {
+                                @Override
+                                public boolean verify(String arg0, SSLSession arg1) {
+                                    // Allow all
+                                    return true;
+                                }
+                            });
+                }
+                else {
+                    ((HttpsURLConnection) conn).setHostnameVerifier(hostnameVerifier);
+                }
             }
 
             setHeader("User-Agent", "UrlDroid/" + VERSION);
@@ -287,6 +301,7 @@ public class HttpClient {
                 // this opens a connection, then sends POST & headers, then
                 // writes body entity
                 conn.getOutputStream().write(payload);
+                conn.getOutputStream().close();
                 // responseCode = conn.getResponseCode();
             }
 
@@ -638,6 +653,34 @@ public class HttpClient {
         this.proxy = proxy;
         this.proxyUser = proxyUser;
         this.proxyPassword = proxyPassword;
+        return this;
+    }
+    
+    
+    /**
+     * Set a SSLContext to use for HTTPS requests.
+     * <p>
+     * If not set, any SSL certificate, even self-signed, will be trusted.
+     * 
+     * @param sslContext
+     * @return
+     */
+    public final HttpClient sslContext(SSLContext sslContext) {
+        this.sslContext = sslContext;
+        return this;
+    }
+    
+    
+    /**
+     * Set a SSL hostname verifier to use for HTTPS requests.
+     * <p>
+     * If not set, hostname verification will be skipped and any hostname will be trusted.
+     *  
+     * @param hostnameVerifier
+     * @return
+     */
+    public final HttpClient sslHostnameVerifier(HostnameVerifier hostnameVerifier) {
+        this.hostnameVerifier = hostnameVerifier;
         return this;
     }
 

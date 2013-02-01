@@ -9,10 +9,6 @@ import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.sun.net.httpserver.HttpExchange;
@@ -20,37 +16,14 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
 public class HttpClientTest {
-    HttpServer httpServer;
-
-    @BeforeClass
-    public static void setUpBeforeClass() throws Exception {
-    }
-
-
-    @AfterClass
-    public static void tearDownAfterClass() throws Exception {
-    }
-
-
-    @Before
-    public void setUp() throws Exception {
-        InetSocketAddress address = new InetSocketAddress(3000);
-        if (httpServer != null)
-            httpServer.stop(0);
-        httpServer = HttpServer.create(address, 0);
-    }
-
-
-    @After
-    public void tearDown() throws Exception {
-        Thread.sleep(300);
-        if (httpServer != null)
-            httpServer.stop(0);
-    }
+    private HttpServer httpServer;
 
 
     @Test
-    public void testPathParam() throws InterruptedException {
+    public void testPathParam() throws Exception {
+        InetSocketAddress address = new InetSocketAddress(3000);
+        httpServer = HttpServer.create(address, 0);
+        
         httpServer.createContext("/test", new HttpHandler() {
             @Override
             public void handle(HttpExchange exchange) throws IOException {
@@ -67,18 +40,26 @@ public class HttpClientTest {
         });
         httpServer.start();
         
-        HttpClient c = new HttpClient("http://localhost:3000/test/{id}")
+        HttpClient c = new HttpClient("http://localhost:" + 3000 + "/test/{id}")
                 .contentType(HttpClient.APPLICATION_JSON_UTF8).addPathParam(
                         "id", "1 2")
                 .addQueryParam("p1", "a b")
                 .get();
         assertEquals(HttpURLConnection.HTTP_OK, c.code());
         assertEquals("Test", c.responseHeaders().get("Server").get(0));
+        
+        Thread.sleep(200);
+        if (httpServer != null)
+            httpServer.stop(0);
+        
     }
     
     
     @Test
-    public void testPOST() throws InterruptedException {
+    public void testPOST() throws Exception {
+        InetSocketAddress address = new InetSocketAddress(3001);
+        httpServer = HttpServer.create(address, 0);
+        
         httpServer.createContext("/testPOST", new HttpHandler() {
             @Override
             public void handle(HttpExchange exchange) throws IOException {
@@ -102,7 +83,7 @@ public class HttpClientTest {
                 if (requestEncoded.length() > 0)
                     request = URLDecoder.decode(requestEncoded, "UTF-8");
                 assertEquals("id=1 2 3&param2=\u20AC", request);
-                
+
                 exchange.sendResponseHeaders(HttpURLConnection.HTTP_CREATED, 0);
                 
                 String response = "true";
@@ -113,13 +94,17 @@ public class HttpClientTest {
         });
         httpServer.start();
         
-        HttpClient c = new HttpClient("http://localhost6:3000/testPOST")
+        HttpClient c = new HttpClient("http://localhost:" + 3001 + "/testPOST")
                 .contentType(HttpClient.APPLICATION_FORM_URLENCODED_UTF8)
                 .addBodyParam("id", "1 2 3")
                 .addBodyParam("param2", "\u20AC")
                 .post();
         assertEquals(HttpURLConnection.HTTP_CREATED, c.code());
         assertEquals("true", (String)c.content());
+        
+        Thread.sleep(200);
+        if (httpServer != null)
+            httpServer.stop(0);
     }
 
 }
