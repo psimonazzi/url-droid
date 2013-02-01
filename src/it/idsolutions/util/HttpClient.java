@@ -658,11 +658,13 @@ public class HttpClient {
     
     
     /**
-     * Set a SSLContext to use for HTTPS requests.
+     * Set a SSLContext to use for HTTPS requests. 
+     * The SSLContext must be already initialized (with a call to init()).
      * <p>
      * If not set, any SSL certificate, even self-signed, will be trusted.
      * 
      * @param sslContext
+     *            SSLContext, already initialized
      * @return
      */
     public final HttpClient sslContext(SSLContext sslContext) {
