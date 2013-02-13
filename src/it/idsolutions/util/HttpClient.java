@@ -2,6 +2,7 @@ package it.idsolutions.util;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -54,7 +55,7 @@ import com.google.gson.JsonSerializer;
  * @author ps
  */
 public class HttpClient {
-    public static final String VERSION = "0.2.0";
+    public static final String VERSION = "0.2.1";
     public static final String APPLICATION_JSON_UTF8 = "application/json; charset=UTF-8";
     public static final String APPLICATION_FORM_URLENCODED_UTF8 = "application/x-www-form-urlencoded; charset=UTF-8";
     public static final int DEFAULT_TIMEOUT_MS = 20000;
@@ -231,6 +232,7 @@ public class HttpClient {
                 conn = (HttpURLConnection) new URL(actualUrl)
                         .openConnection(proxy);
             conn.setConnectTimeout(timeoutMillis);
+            conn.setRequestMethod(method);
 
             // HTTPS
             if (conn instanceof HttpsURLConnection) {
@@ -315,6 +317,15 @@ public class HttpClient {
                 content = getEntityAsString(in, conn.getContentEncoding());
             } catch (FileNotFoundException ex) {
                 // That's OK: there was no response content, only a HTTP status
+            } catch (IOException ioe) {
+                // We could receive the HTTP response here
+                this.responseCode = conn.getResponseCode();
+                this.responseReasonPhrase = conn.getResponseMessage();
+                this.responseHeaders = conn.getHeaderFields();
+                if (!noExceptionOnServerError && (responseCode / 100 != 2)) {
+                    throw new RuntimeException(responseCode + " "
+                            + responseReasonPhrase);
+                }
             }
             if (content != null) {
                 if (deserializedResponseType != null) {
