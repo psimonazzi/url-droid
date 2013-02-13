@@ -299,7 +299,8 @@ public class HttpClient {
                 byte[] payload = entity.getBytes("UTF-8");
                 // tells HUC that you're going to POST; still no IO
                 conn.setDoOutput(true);
-                conn.setFixedLengthStreamingMode(payload.length);
+                // Set content length? Can cause problems in some configurations of java6 and web servers
+                //conn.setFixedLengthStreamingMode(payload.length);
                 // this opens a connection, then sends POST & headers, then
                 // writes body entity
                 conn.getOutputStream().write(payload);
