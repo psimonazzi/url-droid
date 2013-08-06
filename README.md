@@ -7,6 +7,8 @@ The library is basically a wrapper around `HttpURLConnection`, which is the API 
 Android [officially recommended by Google](http://android-developers.blogspot.com/2011/09/androids-http-clients.html).
 It provides convenient ways to craft GET, POST and other kinds of requests, and get responses back. It also integrates the GSON library for serializing/deserializing objects in JSON format.
 
+If the [OkHttp library](http://square.github.io/okhttp) is available, UrlDroid will use its implementation of `HttpURLConnection`, otherwise it will fall back to the default system implementation.
+
 
 ## Features
 
@@ -14,14 +16,15 @@ It provides convenient ways to craft GET, POST and other kinds of requests, and 
 - Proxy support (HTTP and SOCKS)
 - HTTPS and Basic Authorization support
 - Sending and receiving data in JSON format
-- Gzip compression and response caching
+- Gzip compression
+- Response caching
 
 
 ## Building
 
 The project is in Eclipse format, but it is trivial to integrate in other build systems or IDEs, as UrlDroid consists of a single Java class.
 
-The only dependencies are the [Google GSON library](https://code.google.com/p/google-gson/) and Douglas Crockford's reference [JSON-Java library](https://github.com/douglascrockford/JSON-java). Both are included in the project as jars.
+The only dependencies are the [Google GSON library](https://code.google.com/p/google-gson/) and Douglas Crockford's reference [JSON-Java library](https://github.com/douglascrockford/JSON-java). Both are included in the project as jars. The [OkHttp library](http://square.github.io/okhttp) is an optional dependency at runtime.
 
 Unit tests are in JUnit 4 style.
 
@@ -129,6 +132,30 @@ HttpClient c = new HttpClient("http://localhost:3000/test.json")
     .get();
 JSONObject r = (JSONObject)c.content();
 ```        
+
+### Response cache
+
+```
+// Setup cache. You need to do this one time only, before making requests
+com.squareup.okhttp.HttpResponseCache cache;
+File cacheDir = new File(
+        System.getProperty("java.io.tmpdir"), // or getCacheDir() on Android
+        "http-" + UUID.randomUUID().toString());
+cache = new HttpResponseCache(cacheDir, 10 * 1024 * 1024);
+ResponseCache.setDefault(cache);
+ 
+// ...
+ 
+// HTTP and HTTPS GET responses will be cached according to RFC 2068
+new HttpClient("http://localhost:1337").get();
+ 
+// ...
+ 
+// Uninstall the cache when it's not needed
+ResponseCache.setDefault(null);
+cache.delete();
+```
+
 
 ## License
 

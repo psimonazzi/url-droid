@@ -55,9 +55,11 @@ import com.google.gson.JsonSerializer;
  * @author ps
  */
 public class HttpClient {
-    public static final String VERSION = "0.2.1";
-    public static final String APPLICATION_JSON_UTF8 = "application/json; charset=UTF-8";
-    public static final String APPLICATION_FORM_URLENCODED_UTF8 = "application/x-www-form-urlencoded; charset=UTF-8";
+    public static final String VERSION = "0.3.0";
+    public static final String APPLICATION_JSON_UTF8 = 
+            "application/json; charset=UTF-8";
+    public static final String APPLICATION_FORM_URLENCODED_UTF8 = 
+            "application/x-www-form-urlencoded; charset=UTF-8";
     public static final int DEFAULT_TIMEOUT_MS = 20000;
 
     private URL url;
@@ -220,17 +222,38 @@ public class HttpClient {
                     && proxyPassword != null && !proxyPassword.equals("")) {
                 String base64Encoded = Base64.encodeString(
                         proxyUser + ":" + proxyPassword).trim();
-                setHeader("Proxy-Authorization", "Basic " + base64Encoded); // http://freesoft.org/CIE/RFC/2068/195.htm
+                // http://freesoft.org/CIE/RFC/2068/195.htm
+                setHeader("Proxy-Authorization", "Basic " + base64Encoded);
             }
         }
 
         try {
-            // this does no network IO
-            if (proxy == null)
-                conn = (HttpURLConnection) new URL(actualUrl).openConnection();
-            else
-                conn = (HttpURLConnection) new URL(actualUrl)
-                        .openConnection(proxy);
+            // Get the HttpURLConnection object, 
+            // either the OkHttp implementation (http://square.github.io/okhttp/)
+            // if available, or the system default implementation
+            Class<?> c;
+            try {
+                c = Class.forName("com.squareup.okhttp.OkHttpClient");
+            } catch (Exception ex) {
+                c = null;
+            }
+            if (c != null) {
+                Object okHttp = c.newInstance();
+                if (proxy != null)
+                    c.getMethod("setProxy", Proxy.class)
+                        .invoke(okHttp, proxy);
+                conn = (HttpURLConnection) c.getMethod("open", URL.class)
+                        .invoke(okHttp, new URL(actualUrl));
+            }
+            else {
+                // this does no network IO
+                if (proxy == null)
+                    conn = (HttpURLConnection) new URL(actualUrl).openConnection();
+                else
+                    conn = (HttpURLConnection) new URL(actualUrl)
+                            .openConnection(proxy);
+            }
+            
             conn.setConnectTimeout(timeoutMillis);
             conn.setRequestMethod(method);
 
@@ -277,8 +300,11 @@ public class HttpClient {
                     ((HttpsURLConnection) conn).setHostnameVerifier(hostnameVerifier);
                 }
             }
+            
+            // Enable cache via HttpResponseCache (it's a no-op for HttpUrlConnection?)
+            conn.setUseCaches(true);
 
-            setHeader("User-Agent", "UrlDroid/" + VERSION);
+            setHeader("User-Agent", "UrlDroid/" + conn.getClass().getName() + "/" + VERSION);
 
             if (headers != null) {
                 for (Map.Entry<String, String> e : headers.entrySet())
@@ -292,14 +318,15 @@ public class HttpClient {
             // best practices here
             // and enforce sending query params in the body for POST/PUT
             // requests.
-            if (entity != null
-                    && !entity.equals("")
-                    && ("POST".equalsIgnoreCase(method) || "PUT"
-                            .equalsIgnoreCase(method))) {
+            if (entity != null && 
+                    !entity.equals("") && 
+                    ("POST".equalsIgnoreCase(method) || 
+                    "PUT".equalsIgnoreCase(method))) {
                 byte[] payload = entity.getBytes("UTF-8");
                 // tells HUC that you're going to POST; still no IO
                 conn.setDoOutput(true);
-                // Set content length? Can cause problems in some configurations of java6 and web servers
+                // Set content length? Can cause problems in some configurations 
+                // of java6 and web servers
                 //conn.setFixedLengthStreamingMode(payload.length);
                 // this opens a connection, then sends POST & headers, then
                 // writes body entity
@@ -324,8 +351,8 @@ public class HttpClient {
                 this.responseReasonPhrase = conn.getResponseMessage();
                 this.responseHeaders = conn.getHeaderFields();
                 if (!noExceptionOnServerError && (responseCode / 100 != 2)) {
-                    throw new RuntimeException(responseCode + " "
-                            + responseReasonPhrase);
+                    throw new RuntimeException(responseCode + " " + 
+                            responseReasonPhrase);
                 }
             }
             if (content != null) {
@@ -715,7 +742,7 @@ public class HttpClient {
                     new JsonDeserializer<Date>() {
                         @Override
                         public Date deserialize(JsonElement je, Type type,
-                                JsonDeserializationContext jdc)
+                                JsonDeserializationContext context)
                                 throws JsonParseException {
                             return new Date(je.getAsLong());
                         }
@@ -733,8 +760,8 @@ public class HttpClient {
         // Serialize dates as Unix timestamp notation, for interoperability with
         // Jackson-RS
         Gson gson = new GsonBuilder()
-        // .serializeNulls()
-        // .setDateFormat(DateFormat.LONG)
+                // .serializeNulls()
+                // .setDateFormat(DateFormat.LONG)
                 .registerTypeAdapter(Date.class, new JsonSerializer<Date>() {
                     @Override
                     public JsonElement serialize(Date src, Type typeOfSrc,
