@@ -38,7 +38,6 @@ Unit tests are in JUnit 4 style.
 // with a custom header
 // Path fragments and query params are encoded automatically
 HttpClient c = new HttpClient("http://localhost:3000/test/{id}")
-    .contentType(HttpClient.APPLICATION_JSON_UTF8)
     .addPathParam("id", "1 2")
     .addQueryParam("p1", "a b")
     .setHeader("X-Client", "url-droid")
@@ -135,7 +134,7 @@ JSONObject r = (JSONObject)c.content();
 
 ### Response cache
 
-```
+```java
 // Setup cache. You need to do this one time only, before making requests
 com.squareup.okhttp.HttpResponseCache cache;
 File cacheDir = new File(
