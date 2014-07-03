@@ -5,7 +5,7 @@ A super-lightweight HTTP client library for Android and the JVM, written in Java
 
 The library is basically a wrapper around `HttpURLConnection`, which is the API to make HTTP requests on
 Android [officially recommended by Google](http://android-developers.blogspot.com/2011/09/androids-http-clients.html).
-It provides convenient ways to craft GET, POST and other kinds of requests, and get responses back. It also integrates the GSON library for serializing/deserializing objects in JSON format.
+It provides convenient ways to craft GET, POST and other kinds of requests and get responses back. It can optionally use libraries for serializing/deserializing objects in JSON format.
 
 If the [OkHttp library](http://square.github.io/okhttp) is available, UrlDroid will use its implementation of `HttpURLConnection`, otherwise it will fall back to the default system implementation.
 
@@ -14,7 +14,8 @@ If the [OkHttp library](http://square.github.io/okhttp) is available, UrlDroid w
 
 - Encoding/decoding of query params, URL paths and request or response bodies
 - Proxy support (HTTP and SOCKS)
-- HTTPS and Basic Authorization support
+- HTTPS with SSL certificates
+- Basic Authorization support
 - Sending and receiving data in JSON format
 - Gzip compression
 - Response caching
@@ -22,11 +23,26 @@ If the [OkHttp library](http://square.github.io/okhttp) is available, UrlDroid w
 
 ## Building
 
-The project is in Eclipse format, but it is trivial to integrate in other build systems or IDEs, as UrlDroid consists of a single Java class.
+The project is built with Gradle, but it should be trivial to integrate in other build systems and/or IDEs, as UrlDroid consists of a main module with two Java classes and no dependencies. There are also two optional modules for JSON serialization, each with a single Java class.
 
-The only dependencies are the [Google GSON library](https://code.google.com/p/google-gson/) and Douglas Crockford's reference [JSON-Java library](https://github.com/douglascrockford/JSON-java). Both are included in the project as jars. The [OkHttp library](http://square.github.io/okhttp) is an optional dependency at runtime.
+The project modules are:
+- `url-droid`: Main module, provides the HttpClient class. It has no compile dependencies.
+- `url-droid-gson`: Provides JSON support using the [Google GSON library](https://code.google.com/p/google-gson/). It depends on a jar included in the project. If it is available at runtime the main module can use it.
+- `url-droid-jsonorg`: Provides JSON support using Douglas Crockford's reference [JSON-Java library](https://github.com/douglascrockford/JSON-java). It depends on a jar included in the project. If it is available at runtime the main module can use it.
 
-Unit tests are in JUnit 4 style.
+The [OkHttp library](http://square.github.io/okhttp) is an optional dependency at runtime.
+
+The modules can be built with the standard Gradle task:
+
+```sh
+$ gradle build
+```
+
+Unit tests are in JUnit 4 style. You can run them with: 
+
+```sh
+$ gradle check
+```
 
 
 ## Usage
@@ -60,12 +76,24 @@ HttpClient c = new HttpClient("http://localhost:3000/post")
     .post();
 ```
 
+### multipart/form-data request for uploading files
+
+```java
+// Send a POST multipart request with a string field and a binary file
+HttpClient c = new HttpClient("http://localhost:3000/post")
+    .addMultiPartParam("file", "picture.jpg", "image/jpeg",
+        new FileInputStream(new File("/tmp/picture.jpg")))
+    .addMultiPartParam("id", "1337");
+    .post();
+```
+
 ### Handle HTTP status
 
 ```java
 // If the response status is an error (i.e. not a 2XX code), the client will
 // normally throw a RuntimeException.
-// To disable this behaviour and do not throw exceptions for any status, use noExceptions()
+// To disable this behaviour and do not throw exceptions for any status,
+// use noExceptions()
 int status = new HttpClient("http://localhost:3000")
     .noExceptions()
     .get()
@@ -83,10 +111,12 @@ int status = new HttpClient("https://localhost:3000/test")
     .get();
  
 // To provide a trusted certificate you can create a SSLContext
-// For example, on Android, if you have a trust store in BKS format in /raw/truststore.bks:
+// For example, on Android, if you have a trust store in BKS format in
+// /raw/truststore.bks:
 char[] passphrase = "TRUSTSTORE_PASSWORD".toCharArray();
 KeyStore ksTrust = KeyStore.getInstance("BKS");
-ksTrust.load(context.getResources().openRawResource(R.raw.truststore), passphrase);
+ksTrust.load(context.getResources()
+    .openRawResource(R.raw.truststore), passphrase);
 TrustManagerFactory tmf = TrustManagerFactory.getInstance(
     KeyManagerFactory.getDefaultAlgorithm());
 tmf.init(ksTrust);
@@ -108,26 +138,26 @@ HttpClient c = new HttpClient("http://localhost:3000/test.json")
     .entity("{\"s\":\"test\",\"i\":1360665127000}")
     .post();
  
-// ... or as a Java POJO, which will be serialized
+// ... or as a Java POJO, which will be serialized using GSON
 MyData data = new MyData();
 data.setParam1("XYZ");
 data.setParam2(1337);
 data.setParam3(new String[] { true, false, true });
 HttpClient c = new HttpClient("http://localhost:3000/test.json")
     .contentType(HttpClient.APPLICATION_JSON_UTF8)
-    .entity(data, MyData.class)
+    .entity(data, MyData.class, new GsonAdapter())
     .post();
  
 // Read the response as a JSON object of an expected type "MyResponse"...
 HttpClient c = new HttpClient("http://localhost:3000/test.json")
-    .returnType(MyResponse.class)
+    .returnType(MyResponse.class, new GsonAdapter())
     .get();
 MyResponse r = (MyResponse)c.content();
  
-// Read the response as a generic JSONObject
+// Read the response as a generic JSONObject (with the JSON Org adapter)
 HttpClient c = new HttpClient("http://localhost:3000/test.json")
     .accept("application/json")
-    .returnType(JSONObject.class)
+    .returnType(JSONObject.class, new JsonOrgAdapter())
     .get();
 JSONObject r = (JSONObject)c.content();
 ```        

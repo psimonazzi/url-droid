@@ -1,6 +1,7 @@
 package test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import it.idsolutions.util.HttpClient;
 
 import java.io.IOException;
@@ -9,6 +10,7 @@ import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 
+import org.junit.After;
 import org.junit.Test;
 
 import com.sun.net.httpserver.HttpExchange;
@@ -17,6 +19,12 @@ import com.sun.net.httpserver.HttpServer;
 
 public class HttpClientTest {
     private HttpServer httpServer;
+    
+    @After
+    public void after() {
+        if (httpServer != null)
+            httpServer.stop(0);
+    }
 
 
     @Test
@@ -49,8 +57,6 @@ public class HttpClientTest {
         assertEquals("Test", c.responseHeaders().get("Server").get(0));
         
         Thread.sleep(200);
-        if (httpServer != null)
-            httpServer.stop(0);
         
     }
     
@@ -121,8 +127,6 @@ public class HttpClientTest {
         assertEquals("true", (String)c.content());
         
         Thread.sleep(200);
-        if (httpServer != null)
-            httpServer.stop(0);
     }
     
     
@@ -185,8 +189,6 @@ public class HttpClientTest {
         assertEquals("true", (String)c.content());
         
         Thread.sleep(200);
-        if (httpServer != null)
-            httpServer.stop(0);
     }
     
     
@@ -232,8 +234,56 @@ public class HttpClientTest {
         assertEquals(HttpURLConnection.HTTP_BAD_METHOD, c.code());
         
         Thread.sleep(200);
-        if (httpServer != null)
-            httpServer.stop(0);
+    }
+    
+    
+    @Test
+    public void testMultipart() throws Exception {
+        InetSocketAddress address = new InetSocketAddress(3004);
+        httpServer = HttpServer.create(address, 0);
+        
+        httpServer.createContext("/multipart", new HttpHandler() {
+            @Override
+            public void handle(HttpExchange exchange) throws IOException {
+                assertEquals("POST", exchange.getRequestMethod());
+                assertEquals("/multipart", exchange.getRequestURI().getPath());
+                assertEquals("multipart/form-data;boundary=" + HttpClient.MULTIPART_BOUNDARY, 
+                        exchange.getRequestHeaders().get("Content-Type").get(0));
+                int b;
+                StringBuilder buf = new StringBuilder();
+                InputStream is = exchange.getRequestBody();
+                while ((b = is.read()) != -1) {
+                    buf.append((char) b);
+                }
+                is.close();
+                
+                assertTrue(
+                        buf.toString().contains("--" + HttpClient.MULTIPART_BOUNDARY + "\r\n" +
+                        "Content-Disposition:form-data;name=\"x\"\r\nContent-Type: application/octet-stream\r\n\r\ny\r\n"));
+                assertTrue(
+                        buf.toString().contains("--" + HttpClient.MULTIPART_BOUNDARY + "\r\n" +
+                        "Content-Disposition:form-data;name=\"a\"\r\nContent-Type: application/octet-stream\r\n\r\n1\r\n"));
+                assertTrue(buf.toString().startsWith("--" + HttpClient.MULTIPART_BOUNDARY + "\r\n"));
+                assertTrue(buf.toString().endsWith("--" + HttpClient.MULTIPART_BOUNDARY + "--\r\n"));
+                
+                
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, 0);
+                
+                String response = "true";
+                exchange.getResponseBody().write(response.getBytes());
+                exchange.getResponseBody().close();
+                exchange.close();
+            }
+        });
+        httpServer.start();
+        
+        HttpClient c = new HttpClient("http://localhost:" + 3004 + "/multipart")
+                .addMultiPartParam("x", "y")
+                .addMultiPartParam("a", "1")
+                .post();
+        assertEquals(HttpURLConnection.HTTP_OK, c.code());
+        
+        Thread.sleep(200);
     }
 
 }
