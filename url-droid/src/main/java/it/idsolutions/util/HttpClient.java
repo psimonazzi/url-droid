@@ -104,6 +104,8 @@ public class HttpClient {
     /**
      * Execute a POST HTTP request.
      *
+     * @return Self for chaining
+     *
      */
     public final HttpClient post() {
         execute("POST");
@@ -113,6 +115,8 @@ public class HttpClient {
 
     /**
      * Execute a GET HTTP request.
+     *
+     * @return Self for chaining
      *
      */
     public final HttpClient get() {
@@ -124,6 +128,8 @@ public class HttpClient {
     /**
      * Execute a PUT HTTP request.
      *
+     * @return Self for chaining
+     *
      */
     public final HttpClient put() {
         execute("PUT");
@@ -133,6 +139,8 @@ public class HttpClient {
 
     /**
      * Execute a DELETE HTTP request.
+     *
+     * @return Self for chaining
      *
      */
     public final HttpClient delete() {
@@ -655,6 +663,8 @@ public class HttpClient {
      *
      * @param entity
      *            Entity object, which will be serialized as JSON
+     * @param adapter
+     *            Implementation of DataAdapter used for serialization
      * @return Self for chaining
      * @throws RuntimeException
      *             When the given object cannot be serialized
@@ -733,6 +743,8 @@ public class HttpClient {
      *            Object type, used as an hint for the deserializer. This may be
      *            needed with bare generics collections, i.e.
      *            <code>new TypeToken&lt;Collection&lt;myDataType&gt;&gt;(){}.getType()</code>
+     * @param adapter
+     *            Implementation of DataAdapter used for serialization
      * @return Self for chaining
      */
     public final HttpClient returnType(Type type, DataAdapter adapter) {
