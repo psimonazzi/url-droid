@@ -1,2 +1,4 @@
 build/
 .gradle
+/url-droid-gson/url-droid-gson/.nb-gradle/private/
+/url-droid-gson/.nb-gradle/profiles/private/

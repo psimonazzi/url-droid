@@ -23,16 +23,18 @@ If the [OkHttp library](http://square.github.io/okhttp) is available, UrlDroid w
 
 ## Building
 
-The project is built with Gradle, but it should be trivial to integrate in other build systems and/or IDEs, as UrlDroid consists of a main module with two Java classes and no dependencies. There are also two optional modules for JSON serialization, each with a single Java class.
+The project is built with Gradle, but it should be trivial to integrate in other build systems and/or IDEs, as UrlDroid consists of a main module with two Java classes and no dependencies. There are also several optional modules for JSON serialization, each with a single Java class.
 
-The project modules are:
-- `url-droid`: Main module, provides the HttpClient class. It has no compile dependencies.
-- `url-droid-gson`: Provides JSON support using the [Google GSON library](https://code.google.com/p/google-gson/). It depends on a jar included in the project. If it is available at runtime the main module can use it.
-- `url-droid-jsonorg`: Provides JSON support using Douglas Crockford's reference [JSON-Java library](https://github.com/douglascrockford/JSON-java). It depends on a jar included in the project. If it is available at runtime the main module can use it.
+The project main module is `url-droid`: it provides the HttpClient class. It has no compile dependencies.
+
+If you want to enable JSON serialization/deserialization you can add to your compile dependencies  one (or more) of the following adapters:
+- `url-droid-gson`: Provides JSON support using the [Google GSON library](https://code.google.com/p/google-gson/). It depends on a jar included in the project.
+- `url-droid-jsonorg`: Provides JSON support using Douglas Crockford's reference [JSON-Java library](https://github.com/douglascrockford/JSON-java). It depends on a jar included in the project.
+- `url-droid-jackson`: Provides JSON support using [Jackson 1.x](https://github.com/FasterXML/jackson). It depends on a jar included in the project.
 
 The [OkHttp library](http://square.github.io/okhttp) is an optional dependency at runtime.
 
-The modules can be built with the standard Gradle task:
+Each module can be built with the standard Gradle task:
 
 ```sh
 $ gradle build
