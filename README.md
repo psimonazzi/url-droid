@@ -37,13 +37,13 @@ The [OkHttp library](http://square.github.io/okhttp) is an optional dependency a
 Each module can be built with the standard Gradle task:
 
 ```sh
-$ gradle build
+$ ./gradlew build
 ```
 
 Unit tests are in JUnit 4 style. You can run them with: 
 
 ```sh
-$ gradle check
+$ ./gradlew check
 ```
 
 
