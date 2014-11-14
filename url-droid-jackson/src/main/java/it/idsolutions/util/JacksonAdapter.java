@@ -2,7 +2,7 @@ package it.idsolutions.util;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import org.codehaus.jackson.map.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 
 public class JacksonAdapter implements HttpClient.DataAdapter {

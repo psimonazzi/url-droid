@@ -4,7 +4,7 @@ sourceCompatibility = "1.6"
 targetCompatibility = "1.6"
 [compileJava, compileTestJava]*.options*.encoding = "UTF-8"
 
-version = '1.0.1'
+version = '2.0.0'
 
 repositories {
   mavenCentral()
@@ -14,4 +14,10 @@ dependencies {
   compile project(':url-droid')
   compile files(fileTree(dir: 'lib', includes: ['*.jar']))
   testCompile 'junit:junit:4.11'
+}
+
+
+task wrapper(type: Wrapper,
+             description: 'Creates and deploys the Gradle wrapper to the current directory.') {
+  gradleVersion = '2.2'
 }
