@@ -3,21 +3,21 @@ package it.idsolutions.util;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.lang.reflect.Type;
-
 
 public class JsonOrgAdapter implements HttpClient.DataAdapter {
     @Override
-    public String serialize(Object content, Type type) {
-        if (type != JSONObject.class || !(content instanceof JSONObject))
+    public String serialize(Object content) {
+        if (!(content instanceof JSONObject))
             throw new UnsupportedOperationException("Only JSONObject type is supported for serialization");
         return content.toString();
     }
 
     @Override
-    public Object deserialize(String content, Type type) {
+    public <T> T deserialize(String content, Class<T> type) {
+        if (type != JSONObject.class)
+            throw new UnsupportedOperationException("Only JSONObject type is supported for deserialization");
         try {
-            return new JSONObject(content);
+            return (T)new JSONObject(content);
         } catch (JSONException ex) {
             throw new RuntimeException(ex);
         }

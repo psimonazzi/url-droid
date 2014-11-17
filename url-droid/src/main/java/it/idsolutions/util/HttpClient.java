@@ -9,7 +9,6 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
@@ -22,6 +21,7 @@ import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -44,7 +44,16 @@ import javax.net.ssl.X509TrustManager;
  * @author ps
  */
 public class HttpClient {
-    public static final String VERSION = "1.0.1";
+    public static String VERSION = "";
+    static {
+        try {
+            Properties props = new Properties();
+            props.load(HttpClient.class.getClassLoader().getResourceAsStream("app.properties"));
+            VERSION = props.getProperty("application.version");
+        } catch (Exception ex) {
+            VERSION = "";
+        }
+    }
     public static final String APPLICATION_JSON_UTF8 =
             "application/json; charset=UTF-8";
     public static final String APPLICATION_FORM_URLENCODED_UTF8 =
@@ -67,7 +76,7 @@ public class HttpClient {
     private String responseReasonPhrase;
     private Map<String, List<String>> responseHeaders;
     private String rawContent;
-    private Type deserializedResponseType;
+    private Class<?> deserializedResponseType;
     private boolean noExceptionOnServerError = false;
     private String user;
     private String password;
@@ -267,18 +276,21 @@ public class HttpClient {
                     SSLContext sc = SSLContext.getInstance("TLS");
                     // Trust anyone
                     TrustManager tm = new X509TrustManager() {
+                        @Override
                         public void checkClientTrusted(
                                 X509Certificate[] chain, String authType)
                                 throws CertificateException {
                         }
 
 
+                        @Override
                         public void checkServerTrusted(
                                 X509Certificate[] chain, String authType)
                                 throws CertificateException {
                         }
 
 
+                        @Override
                         public X509Certificate[] getAcceptedIssuers() {
                             return null;
                         }
@@ -670,29 +682,9 @@ public class HttpClient {
      *             When the given object cannot be serialized
      */
     public final HttpClient entity(Object entity, DataAdapter adapter) {
-        return entity(entity, null, adapter);
-    }
-
-
-    /**
-     * Set the request entity as serialized JSON.
-     *
-     * @param entity
-     *            Entity object, which will be serialized as JSON
-     * @param type
-     *            Object type, used as an hint for the serializer. This may be
-     *            needed when sending bare generics collections, i.e.
-     *            <code>new TypeToken&lt;Collection&lt;myDataType&gt;&gt;(){}.getType()</code>
-     * @param adapter
-     *            Implementation of DataAdapter used for serialization
-     * @return Self for chaining
-     * @throws RuntimeException
-     *             When the given object cannot be serialized
-     */
-    public final HttpClient entity(Object entity, Type type, DataAdapter adapter) {
         String data;
         try {
-            data = adapter.serialize(entity, type);
+            data = adapter.serialize(entity);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
@@ -747,7 +739,7 @@ public class HttpClient {
      *            Implementation of DataAdapter used for serialization
      * @return Self for chaining
      */
-    public final HttpClient returnType(Type type, DataAdapter adapter) {
+    public final HttpClient returnType(Class<?> type, DataAdapter adapter) {
         deserializedResponseType = type;
         this.deserializeAdapter = adapter;
         return this;
@@ -1034,8 +1026,8 @@ public class HttpClient {
 
 
     public interface DataAdapter {
-        String serialize(Object content, Type type);
-        Object deserialize(String content, Type type);
+        String serialize(Object content);
+        <T> T deserialize(String content, Class<T> type);
     }
 
 }

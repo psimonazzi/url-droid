@@ -26,6 +26,10 @@ public class HttpClientTest {
             httpServer.stop(0);
     }
 
+    @Test
+    public void testVersion() {
+        assertTrue(!HttpClient.VERSION.isEmpty());
+    }
 
     @Test
     public void testPathParam() throws Exception {

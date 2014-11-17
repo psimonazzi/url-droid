@@ -2,3 +2,6 @@ build/
 .gradle
 /url-droid-gson/url-droid-gson/.nb-gradle/private/
 /url-droid-gson/.nb-gradle/profiles/private/
+/url-droid-jackson/.nb-gradle/private/
+/url-droid-gson/.nb-gradle/private/
+/url-droid-jsonorg/.nb-gradle/private/

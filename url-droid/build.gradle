@@ -4,7 +4,7 @@ sourceCompatibility = "1.6"
 targetCompatibility = "1.6"
 [compileJava, compileTestJava]*.options*.encoding = "UTF-8"
 
-version = '1.0.1'
+version = '2.0.0'
 
 repositories {
   mavenCentral()
@@ -29,4 +29,32 @@ task javadocJar(type: Jar, dependsOn: javadoc) {
 artifacts {
   archives sourcesAndClassesJar
   //archives javadocJar
+}
+
+Date buildTimeAndDate = new Date()
+ext {
+  buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(buildTimeAndDate)
+}
+sourceSets {
+  main {
+    // also put resources in classes dir
+    output.resourcesDir = output.classesDir
+  }
+}
+processResources {
+  from(sourceSets.main.resources.srcDirs) {
+    include '**/app.properties'
+    filter(org.apache.tools.ant.filters.ReplaceTokens,
+           tokens: [
+             version: project.version,
+             gradleVersion: project.gradle.gradleVersion,
+             buildTimestamp: project.ext.buildTimestamp
+           ])
+  }
+}
+
+
+task wrapper(type: Wrapper,
+             description: 'Creates and deploys the Gradle wrapper to the current directory.') {
+  gradleVersion = '2.2'
 }

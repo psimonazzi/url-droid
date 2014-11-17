@@ -28,22 +28,21 @@ The project is built with Gradle, but it should be trivial to integrate in other
 The project main module is `url-droid`: it provides the HttpClient class. It has no compile dependencies.
 
 If you want to enable JSON serialization/deserialization you can add to your compile dependencies  one (or more) of the following adapters:
-- `url-droid-gson`: Provides JSON support using the [Google GSON library](https://code.google.com/p/google-gson/). It depends on a jar included in the project.
 - `url-droid-jsonorg`: Provides JSON support using Douglas Crockford's reference [JSON-Java library](https://github.com/douglascrockford/JSON-java). It depends on a jar included in the project.
-- `url-droid-jackson`: Provides JSON support using [Jackson 1.x](https://github.com/FasterXML/jackson). It depends on a jar included in the project.
+- `url-droid-jackson`: Provides JSON support using [Jackson 2.x](https://github.com/FasterXML/jackson). It depends on the jars included in the project.
 
 The [OkHttp library](http://square.github.io/okhttp) is an optional dependency at runtime.
 
 Each module can be built with the standard Gradle task:
 
 ```sh
-$ ./gradlew build
+$ gradle build
 ```
 
 Unit tests are in JUnit 4 style. You can run them with: 
 
 ```sh
-$ ./gradlew check
+$ gradle check
 ```
 
 
@@ -140,19 +139,19 @@ HttpClient c = new HttpClient("http://localhost:3000/test.json")
     .entity("{\"s\":\"test\",\"i\":1360665127000}")
     .post();
  
-// ... or as a Java POJO, which will be serialized using GSON
+// ... or as a Java POJO, which will be serialized using Jackson
 MyData data = new MyData();
 data.setParam1("XYZ");
 data.setParam2(1337);
 data.setParam3(new String[] { true, false, true });
 HttpClient c = new HttpClient("http://localhost:3000/test.json")
     .contentType(HttpClient.APPLICATION_JSON_UTF8)
-    .entity(data, MyData.class, new GsonAdapter())
+    .entity(data, JacksonAdapter())
     .post();
  
 // Read the response as a JSON object of an expected type "MyResponse"...
 HttpClient c = new HttpClient("http://localhost:3000/test.json")
-    .returnType(MyResponse.class, new GsonAdapter())
+    .returnType(MyResponse.class, new JacksonAdapter())
     .get();
 MyResponse r = (MyResponse)c.content();
  
