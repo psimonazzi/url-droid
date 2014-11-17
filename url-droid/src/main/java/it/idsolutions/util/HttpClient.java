@@ -435,7 +435,10 @@ public class HttpClient {
                         deserializeAdapter != null) {
                     // Deserialize according to the expected type
                     try {
-                        this.responseContent = deserializeAdapter.deserialize(this.rawContent, deserializedResponseType);
+                        if (deserializedResponseType instanceof Class<?>)
+                            this.responseContent = deserializeAdapter.deserialize(this.rawContent, (Class<?>)deserializedResponseType);
+                        else
+                            this.responseContent = deserializeAdapter.deserializeRef(this.rawContent, deserializedResponseType);
                     } catch (Exception ex) {
                         throw new RuntimeException(ex);
                     }
@@ -1040,7 +1043,7 @@ public class HttpClient {
     public interface DataAdapter {
         String serialize(Object content);
         <T> T deserialize(String content, Class<T> type);
-        <T> T deserialize(String content, Object typeRef);
+        <T> T deserializeRef(String content, Object typeRef);
     }
 
 }

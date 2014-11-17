@@ -2,7 +2,6 @@ package test;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import it.idsolutions.util.JacksonAdapter;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
@@ -58,7 +57,7 @@ public class JacksonTest {
             }
         };
         String json = a.serialize(list);
-        List<Test1> r = a.deserialize(json,
+        List<Test1> r = a.deserializeRef(json,
                 new TypeReference<List<Test1>>(){});
         assertEquals(2, r.size());
         assertEquals(42, r.get(0).i);

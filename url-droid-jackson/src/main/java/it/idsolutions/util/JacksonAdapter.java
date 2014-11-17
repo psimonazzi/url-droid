@@ -34,7 +34,7 @@ public class JacksonAdapter implements HttpClient.DataAdapter {
      * @return 
      */
     @Override
-    public <T> T deserialize(String content, Object type) {
+    public <T> T deserializeRef(String content, Object type) {
         try {
             return new ObjectMapper().readValue(content, (TypeReference)type);
         } catch (IOException ex) {

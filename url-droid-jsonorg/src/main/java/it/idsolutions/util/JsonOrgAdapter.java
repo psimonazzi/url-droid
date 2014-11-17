@@ -24,7 +24,7 @@ public class JsonOrgAdapter implements HttpClient.DataAdapter {
     }
     
     @Override
-    public <T> T deserialize(String content, Object type) {
+    public <T> T deserializeRef(String content, Object type) {
         if (type != JSONObject.class)
             throw new UnsupportedOperationException("Only JSONObject type is supported for deserialization");
         try {
