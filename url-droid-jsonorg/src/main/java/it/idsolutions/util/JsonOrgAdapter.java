@@ -22,4 +22,15 @@ public class JsonOrgAdapter implements HttpClient.DataAdapter {
             throw new RuntimeException(ex);
         }
     }
+    
+    @Override
+    public <T> T deserialize(String content, Object type) {
+        if (type != JSONObject.class)
+            throw new UnsupportedOperationException("Only JSONObject type is supported for deserialization");
+        try {
+            return (T)new JSONObject(content);
+        } catch (JSONException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
 }

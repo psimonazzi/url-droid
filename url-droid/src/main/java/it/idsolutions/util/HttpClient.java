@@ -76,7 +76,7 @@ public class HttpClient {
     private String responseReasonPhrase;
     private Map<String, List<String>> responseHeaders;
     private String rawContent;
-    private Class<?> deserializedResponseType;
+    private Object deserializedResponseType;
     private boolean noExceptionOnServerError = false;
     private String user;
     private String password;
@@ -726,20 +726,32 @@ public class HttpClient {
 
     /**
      * Set the expected type of the response content.
-     * <p>
-     * In the special case that the type is JSONObject.class, Douglas
-     * Crockford's JSON deserializer will be used. In all other cases the GSON
-     * deserializer will be used.
      *
      * @param type
-     *            Object type, used as an hint for the deserializer. This may be
-     *            needed with bare generics collections, i.e.
-     *            <code>new TypeToken&lt;Collection&lt;myDataType&gt;&gt;(){}.getType()</code>
+     *            Object type, used as an hint for the deserializer.
      * @param adapter
-     *            Implementation of DataAdapter used for serialization
+     *            Implementation of DataAdapter used for deserialization.
      * @return Self for chaining
      */
     public final HttpClient returnType(Class<?> type, DataAdapter adapter) {
+        deserializedResponseType = type;
+        this.deserializeAdapter = adapter;
+        return this;
+    }
+    
+    
+    /**
+     * Set the expected type of the response content.
+     *
+     * @param type
+     *            Object type, used as an hint for the deserializer. Use this
+     *            method to specify a type in case of type erasure (i.e. bare 
+     *            generics collections).
+     * @param adapter
+     *            Implementation of DataAdapter used for deserialization
+     * @return Self for chaining
+     */
+    public final HttpClient returnType(Object type, DataAdapter adapter) {
         deserializedResponseType = type;
         this.deserializeAdapter = adapter;
         return this;
@@ -1028,6 +1040,7 @@ public class HttpClient {
     public interface DataAdapter {
         String serialize(Object content);
         <T> T deserialize(String content, Class<T> type);
+        <T> T deserialize(String content, Object typeRef);
     }
 
 }
