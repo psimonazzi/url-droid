@@ -100,6 +100,20 @@ int status = new HttpClient("http://localhost:3000")
     .get()
     .code();  
 ```
+
+### Get raw response as an InputStream
+
+```java
+// Implement a callback to receive the response data as a raw InputStream.
+new HttpClient("http://localhost:3000")
+    .rawStreamCallback(new HttpClient.RawStreamCallback() {
+        @Override
+        public void onRawStream(final InputStream in) {
+            // use input stream...
+        }
+    })
+    .get();  
+```
     
 ### HTTPS and Basic Auth
     

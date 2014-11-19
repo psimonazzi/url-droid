@@ -50,7 +50,7 @@ public class HttpClient {
             Properties props = new Properties();
             props.load(HttpClient.class.getClassLoader().getResourceAsStream("app.properties"));
             VERSION = props.getProperty("application.version");
-        } catch (Exception ex) {
+        } catch (Exception ignore) {
             VERSION = "";
         }
     }
@@ -76,6 +76,7 @@ public class HttpClient {
     private String responseReasonPhrase;
     private Map<String, List<String>> responseHeaders;
     private String rawContent;
+    private RawStreamCallback rawStreamCallback;
     private Object deserializedResponseType;
     private boolean noExceptionOnServerError = false;
     private String user;
@@ -417,10 +418,13 @@ public class HttpClient {
             this.rawContent = null;
             try {
                 InputStream in = conn.getInputStream();
-                this.rawContent = getEntityAsString(in, conn.getContentEncoding());
+                if (this.rawStreamCallback != null)
+                    this.rawStreamCallback.onRawStream(in);
+                else
+                    this.rawContent = getEntityAsString(in, conn.getContentEncoding());
             } catch (FileNotFoundException ex) {
                 // That's OK: there was no response content
-            } catch (IOException ioe) {
+            } catch (IOException ignore) {
                 // We could receive the HTTP response here
                 this.responseCode = conn.getResponseCode();
                 this.responseReasonPhrase = conn.getResponseMessage();
@@ -713,8 +717,8 @@ public class HttpClient {
 
 
     /**
-     * Set the 'Content-Type' request header, which specifies the type of the
-     * request entity.
+     * Set the 'Content-Type' request header, which specifies the type of
+     * the request entity.
      *
      * @param type
      *            Header value
@@ -758,6 +762,32 @@ public class HttpClient {
         deserializedResponseType = type;
         this.deserializeAdapter = adapter;
         return this;
+    }
+    
+    
+    /**
+     * Set a callback that will be invoked on the raw response stream.
+     *
+     * @param callback Callback
+     * @return Self for chaining
+     */
+    public final HttpClient rawStreamCallback(RawStreamCallback callback) {
+        this.rawStreamCallback = callback;
+        return this;
+    }
+    
+    
+    /**
+     * Callback invoked on the raw response stream.
+     * 
+     */
+    public static interface RawStreamCallback {
+        /**
+         * Called on the response stream when it is received.
+         * 
+         * @param in The response stream
+         */
+        void onRawStream(final InputStream in);
     }
 
 
@@ -950,7 +980,7 @@ public class HttpClient {
      *             When the content cannot be read or decoded
      */
     private String getEntityAsString(InputStream responseEntity,
-                                     String encoding) throws Exception {
+            String encoding) throws Exception {
         String r = null;
         Writer writer = null;
         Reader reader = null;

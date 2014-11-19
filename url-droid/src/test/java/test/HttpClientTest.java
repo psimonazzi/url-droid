@@ -16,6 +16,11 @@ import org.junit.Test;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.StringWriter;
+import java.io.Writer;
 
 public class HttpClientTest {
     private HttpServer httpServer;
@@ -285,6 +290,67 @@ public class HttpClientTest {
                 .addMultiPartParam("x", "y")
                 .addMultiPartParam("a", "1")
                 .post();
+        assertEquals(HttpURLConnection.HTTP_OK, c.code());
+        
+        Thread.sleep(200);
+    }
+    
+    
+    @Test
+    public void testReturnStream() throws Exception {
+        InetSocketAddress address = new InetSocketAddress(3005);
+        httpServer = HttpServer.create(address, 0);
+        
+        httpServer.createContext("/stream", new HttpHandler() {
+            @Override
+            public void handle(HttpExchange exchange) throws IOException {
+                assertEquals("GET", exchange.getRequestMethod());
+                int b;
+                StringBuilder buf = new StringBuilder();
+                InputStream is = exchange.getRequestBody();
+                while ((b = is.read()) != -1) {
+                    buf.append((char) b);
+                }
+                is.close();
+                
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, 0);
+                
+                String response = "streaming";
+                exchange.getResponseBody().write(response.getBytes());
+                exchange.getResponseBody().close();
+                exchange.close();
+            }
+        });
+        httpServer.start();
+        
+        HttpClient c = new HttpClient("http://localhost:" + 3005 + "/stream")
+                .rawStreamCallback(new HttpClient.RawStreamCallback() {
+                    @Override
+                    public void onRawStream(final InputStream in) {
+                        try {
+                            Writer writer = null;
+                            Reader reader = null;
+                            try {
+                                reader = new BufferedReader(new InputStreamReader(in, "UTF-8"), 8192);
+                                writer = new StringWriter();
+                                int l;
+                                char[] buf = new char[8192];
+                                while ((l = reader.read(buf)) != -1) {
+                                    writer.write(buf, 0, l);
+                                }
+                                assertEquals("streaming", writer.toString());
+                            } finally {
+                                if (writer != null)
+                                    writer.close();
+                                if (reader != null)
+                                    reader.close();
+                            }
+                        } catch (Exception ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    }
+                })
+                .get();
         assertEquals(HttpURLConnection.HTTP_OK, c.code());
         
         Thread.sleep(200);
