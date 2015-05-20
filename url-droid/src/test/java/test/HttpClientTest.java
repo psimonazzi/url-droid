@@ -220,7 +220,7 @@ public class HttpClientTest {
                 }*/
                 assertEquals("PUT", exchange.getRequestMethod());
                 assertEquals("/testError", exchange.getRequestURI().getPath());
-                assertEquals(HttpClient.APPLICATION_JSON_UTF8, 
+                assertEquals(HttpClient.APPLICATION_JSON_UTF8,
                         exchange.getRequestHeaders().get("Content-Type").get(0));
                 int b;
                 StringBuilder buf = new StringBuilder();
@@ -272,7 +272,7 @@ public class HttpClientTest {
                         "Content-Disposition:form-data;name=\"x\"\r\nContent-Type: application/octet-stream\r\n\r\ny\r\n"));
                 assertTrue(
                         buf.toString().contains("--" + HttpClient.MULTIPART_BOUNDARY + "\r\n" +
-                        "Content-Disposition:form-data;name=\"a\"\r\nContent-Type: application/octet-stream\r\n\r\n1\r\n"));
+                                "Content-Disposition:form-data;name=\"a\"\r\nContent-Type: application/octet-stream\r\n\r\n1\r\n"));
                 assertTrue(buf.toString().startsWith("--" + HttpClient.MULTIPART_BOUNDARY + "\r\n"));
                 assertTrue(buf.toString().endsWith("--" + HttpClient.MULTIPART_BOUNDARY + "--\r\n"));
                 
