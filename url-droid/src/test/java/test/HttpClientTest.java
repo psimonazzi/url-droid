@@ -21,6 +21,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.net.URL;
 
 public class HttpClientTest {
     private HttpServer httpServer;
@@ -354,6 +355,20 @@ public class HttpClientTest {
         assertEquals(HttpURLConnection.HTTP_OK, c.code());
         
         Thread.sleep(200);
+    }
+    
+    
+    @Test
+    public void testUrl() throws Exception {
+        HttpClient c = new HttpClient("http://example.com/path/{p1}")
+                .addPathParam("p1", "_")
+                .addQueryParam("x", "y")
+                .addQueryParam("a", "1");
+        String url = c.url();
+        assertEquals("http://example.com/path/_?a=1&x=y", url);
+        c.addQueryParam("z", "2 3");
+        String url2 = c.url();
+        assertEquals("http://example.com/path/_?a=1&x=y&z=2+3", url2);
     }
 
 }

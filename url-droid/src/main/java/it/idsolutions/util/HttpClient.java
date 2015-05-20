@@ -18,6 +18,8 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,6 +86,7 @@ public class HttpClient {
     private String proxyUser;
     private String proxyPassword;
     private Proxy proxy;
+    private boolean noProxy = false;
     private SSLContext sslContext;
     private HostnameVerifier hostnameVerifier;
     private DataAdapter deserializeAdapter;
@@ -165,22 +168,7 @@ public class HttpClient {
         responseReasonPhrase = null;
         responseHeaders = null;
 
-        String actualUrl = url.toString();
-        if (pathParams != null) {
-            for (Map.Entry<String, String> e : pathParams.entrySet()) {
-                actualUrl = actualUrl.replace("{" + e.getKey() + "}",
-                        e.getValue());
-            }
-        }
-
-        if (queryParams != null) {
-            String query = "";
-            for (Map.Entry<String, String> e : queryParams.entrySet())
-                query += e.getKey() + "=" + e.getValue() + "&";
-            query = query.replaceFirst("&$", "");
-            if (!query.equals(""))
-                actualUrl += "?" + query;
-        }
+        String actualUrl = url();
 
         if (entity == null) {
             if (bodyParams != null) {
@@ -214,28 +202,30 @@ public class HttpClient {
         // By default, HttpURLConnection class will connect directly to the
         // origin server (RFC2616).
         // Both HTTP and SOCKS proxies are supported, using HTTP by default
-        if (proxy == null) {
-            String proxyHost = System.getProperty("http.proxyHost");
-            String proxyPortString = System.getProperty("http.proxyPort");
-            if (proxyHost != null && !proxyHost.equals("")
-                    && proxyPortString != null && !proxyPortString.equals("")) {
-                int proxyPort = Integer.parseInt(proxyPortString);
-                proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(
-                        proxyHost, proxyPort));
+        if (!noProxy) {
+            if (proxy == null) {
+                String proxyHost = System.getProperty("http.proxyHost");
+                String proxyPortString = System.getProperty("http.proxyPort");
+                if (proxyHost != null && !proxyHost.equals("")
+                        && proxyPortString != null && !proxyPortString.equals("")) {
+                    int proxyPort = Integer.parseInt(proxyPortString);
+                    proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(
+                            proxyHost, proxyPort));
+                }
             }
-        }
-        if (proxy != null) {
-            // Proxy authorization
-            if (proxyUser == null)
-                proxyUser = System.getProperty("http.proxyUser");
-            if (proxyPassword == null)
-                proxyPassword = System.getProperty("http.proxyPassword");
-            if (proxyUser != null && !proxyUser.equals("")
-                    && proxyPassword != null && !proxyPassword.equals("")) {
-                String base64Encoded = Base64.encodeString(
-                        proxyUser + ":" + proxyPassword).trim();
-                // http://freesoft.org/CIE/RFC/2068/195.htm
-                setHeader("Proxy-Authorization", "Basic " + base64Encoded);
+            if (proxy != null) {
+                // Proxy authorization
+                if (proxyUser == null)
+                    proxyUser = System.getProperty("http.proxyUser");
+                if (proxyPassword == null)
+                    proxyPassword = System.getProperty("http.proxyPassword");
+                if (proxyUser != null && !proxyUser.equals("")
+                        && proxyPassword != null && !proxyPassword.equals("")) {
+                    String base64Encoded = Base64.encodeString(
+                            proxyUser + ":" + proxyPassword).trim();
+                    // http://freesoft.org/CIE/RFC/2068/195.htm
+                    setHeader("Proxy-Authorization", "Basic " + base64Encoded);
+                }
             }
         }
 
@@ -781,7 +771,7 @@ public class HttpClient {
      * Callback invoked on the raw response stream.
      * 
      */
-    public static interface RawStreamCallback {
+    public interface RawStreamCallback {
         /**
          * Called on the response stream when it is received.
          * 
@@ -872,6 +862,17 @@ public class HttpClient {
 
 
     /**
+     * Do not use a proxy, even if there is a system proxy set.
+     *
+     * @return Self for chaining
+     */
+    public final HttpClient noProxy() {
+        this.noProxy = true;
+        return this;
+    }
+
+
+    /**
      * Set a SSLContext to use for HTTPS requests. The SSLContext must be
      * already initialized (with a call to init()).
      * <p>
@@ -951,12 +952,33 @@ public class HttpClient {
 
 
     /**
-     * Returns the request URL bound to this instance.
+     * Returns the request URL bound to this instance. The URL will
+     * include all path and query params set. Query params are ordered
+     * alphabetically so the URL is deterministic.
      *
      * @return Self for chaining
      */
-    public final URL url() {
-        return url;
+    public final String url() {
+        String actualUrl = url.toString();
+        if (pathParams != null) {
+            for (Map.Entry<String, String> e : pathParams.entrySet()) {
+                actualUrl = actualUrl.replace("{" + e.getKey() + "}",
+                        e.getValue());
+            }
+        }
+
+        if (queryParams != null) {
+            String query = "";
+            List<String> keys = new ArrayList<String>(queryParams.keySet());
+            Collections.sort(keys);
+            for (String k : keys)
+                query += k + "=" + queryParams.get(k) + "&";
+            query = query.replaceFirst("&$", "");
+            if (!query.equals(""))
+                actualUrl += "?" + query;
+        }
+        
+        return actualUrl;
     }
 
 

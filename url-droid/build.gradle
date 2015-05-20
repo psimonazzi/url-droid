@@ -4,7 +4,7 @@ sourceCompatibility = "1.6"
 targetCompatibility = "1.6"
 [compileJava, compileTestJava]*.options*.encoding = "UTF-8"
 
-version = '2.0.2'
+version = '2.0.4'
 
 repositories {
   mavenCentral()
@@ -17,9 +17,19 @@ dependencies {
 
 task sourcesAndClassesJar(type: Jar, dependsOn: classes) {
   classifier = 'sources'
-  from sourceSets.main.allSource
+  from(sourceSets.main.allSource) {
+     exclude '**/app.properties'
+  }
+  
   from sourceSets.main.output.classesDir
+  // if we don't have app.properties to rewrite we could use this
+  //from sourceSets.main.allSource
 }
+
+// also copy source files in jar
+// jar {
+//   from sourceSets.main.allSource
+// }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
   classifier = 'javadoc'
@@ -35,21 +45,33 @@ Date buildTimeAndDate = new Date()
 ext {
   buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(buildTimeAndDate)
 }
-sourceSets {
-  main {
-    // also put resources in classes dir
-    output.resourcesDir = output.classesDir
-  }
-}
-processResources {
-  from(sourceSets.main.resources.srcDirs) {
-    include '**/app.properties'
-    filter(org.apache.tools.ant.filters.ReplaceTokens,
-           tokens: [
-             version: project.version,
-             gradleVersion: project.gradle.gradleVersion,
-             buildTimestamp: project.ext.buildTimestamp
-           ])
+
+// Replace tokens with values in a properties file to be used by the app
+// processResources {
+//   from(sourceSets.main.resources.srcDirs) {
+//     include '**/app.properties'
+//     filter(org.apache.tools.ant.filters.ReplaceTokens,
+//            tokens: [
+//              version: project.version,
+//              gradleVersion: project.gradle.gradleVersion,
+//              buildTimestamp: project.ext.buildTimestamp
+//            ])
+//   }
+// }
+// or use this if we also want a jar with sources
+afterEvaluate {
+  //TODO get list of tasks automatically
+  // if (tasks['sourcesAndClassesJar'])...
+  configure([processResources, sourcesAndClassesJar]) {
+    from(sourceSets.main.allSource) {
+      include '**/app.properties'
+      filter(org.apache.tools.ant.filters.ReplaceTokens,
+             tokens: [
+               version: project.version,
+               gradleVersion: project.gradle.gradleVersion,
+               buildTimestamp: project.ext.buildTimestamp
+             ])
+    }
   }
 }
 
