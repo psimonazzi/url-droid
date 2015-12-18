@@ -13,7 +13,7 @@ If the [OkHttp library](http://square.github.io/okhttp) is available, UrlDroid w
 ## Features
 
 - Encoding/decoding of query params, URL paths and request or response bodies
-- Proxy support (HTTP and SOCKS)
+- Proxy support (HTTP and SOCKS) with host-exclusion lists
 - HTTPS with SSL certificates
 - Basic Authorization support
 - Sending and receiving data in JSON format
@@ -27,7 +27,7 @@ The project is built with Gradle, but it should be trivial to integrate in other
 
 The project main module is `url-droid`: it provides the HttpClient class. It has no compile dependencies.
 
-If you want to enable JSON serialization/deserialization you can add to your compile dependencies  one (or more) of the following adapters:
+If you want to enable JSON serialization/deserialization you can add to your compile dependencies one (or more) of the following adapters:
 - `url-droid-jsonorg`: Provides JSON support using Douglas Crockford's reference [JSON-Java library](https://github.com/douglascrockford/JSON-java). It depends on a jar included in the project.
 - `url-droid-jackson`: Provides JSON support using [Jackson 2.x](https://github.com/FasterXML/jackson). It depends on the jars included in the project.
 

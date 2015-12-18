@@ -46,14 +46,17 @@ import javax.net.ssl.X509TrustManager;
  * @author ps
  */
 public class HttpClient {
-    public static String VERSION = "";
+    public static String VERSION;
+    public static String BUILD;
     static {
         try {
             Properties props = new Properties();
             props.load(HttpClient.class.getClassLoader().getResourceAsStream("app.properties"));
             VERSION = props.getProperty("application.version");
+            BUILD = props.getProperty("application.build");
         } catch (Exception ignore) {
             VERSION = "";
+            BUILD = "";
         }
     }
     public static final String APPLICATION_JSON_UTF8 =
@@ -85,6 +88,7 @@ public class HttpClient {
     private String password;
     private String proxyUser;
     private String proxyPassword;
+    private String[] nonProxyHosts;
     private Proxy proxy;
     private boolean noProxy = false;
     private SSLContext sslContext;
@@ -203,28 +207,32 @@ public class HttpClient {
         // origin server (RFC2616).
         // Both HTTP and SOCKS proxies are supported, using HTTP by default
         if (!noProxy) {
-            if (proxy == null) {
-                String proxyHost = System.getProperty("http.proxyHost");
-                String proxyPortString = System.getProperty("http.proxyPort");
-                if (proxyHost != null && !proxyHost.equals("")
+            // First check if proxy is allowed for this url
+            boolean canUseProxy = isProxyAllowed();
+            if (canUseProxy) {
+                if (proxy == null) {
+                    String proxyHost = System.getProperty("http.proxyHost");
+                    String proxyPortString = System.getProperty("http.proxyPort");
+                    if (proxyHost != null && !proxyHost.equals("")
                         && proxyPortString != null && !proxyPortString.equals("")) {
-                    int proxyPort = Integer.parseInt(proxyPortString);
-                    proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(
-                            proxyHost, proxyPort));
+                        int proxyPort = Integer.parseInt(proxyPortString);
+                        proxy = new Proxy(Proxy.Type.HTTP, 
+                                new InetSocketAddress(proxyHost, proxyPort));
+                    }
                 }
-            }
-            if (proxy != null) {
-                // Proxy authorization
-                if (proxyUser == null)
-                    proxyUser = System.getProperty("http.proxyUser");
-                if (proxyPassword == null)
-                    proxyPassword = System.getProperty("http.proxyPassword");
-                if (proxyUser != null && !proxyUser.equals("")
+                if (proxy != null) {
+                    // Proxy authorization
+                    if (proxyUser == null)
+                        proxyUser = System.getProperty("http.proxyUser");
+                    if (proxyPassword == null)
+                        proxyPassword = System.getProperty("http.proxyPassword");
+                    if (proxyUser != null && !proxyUser.equals("")
                         && proxyPassword != null && !proxyPassword.equals("")) {
-                    String base64Encoded = Base64.encodeString(
-                            proxyUser + ":" + proxyPassword).trim();
-                    // http://freesoft.org/CIE/RFC/2068/195.htm
-                    setHeader("Proxy-Authorization", "Basic " + base64Encoded);
+                        String base64Encoded = Base64.encodeString(
+                                proxyUser + ":" + proxyPassword).trim();
+                        // http://freesoft.org/CIE/RFC/2068/195.htm
+                        setHeader("Proxy-Authorization", "Basic " + base64Encoded);
+                    }
                 }
             }
         }
@@ -336,12 +344,9 @@ public class HttpClient {
             // method, nor query params with the POST/PUT methods, but best
             // practice is to send query params in the body for POST/PUT
             // requests.
-            if (entity != null &&
-                    !entity.equals("") &&
-                    ("POST".equalsIgnoreCase(method) ||
-                            "PUT".equalsIgnoreCase(method))) {
+            if (entity != null && !entity.equals("")) {
                 byte[] payload = entity.getBytes("UTF-8");
-                // tells HUC that you're going to POST; still no IO
+                // still no IO
                 conn.setDoOutput(true);
                 // Set content length? Can cause problems in some 
                 // configurations of java6 and web servers
@@ -419,6 +424,16 @@ public class HttpClient {
                 this.responseCode = conn.getResponseCode();
                 this.responseReasonPhrase = conn.getResponseMessage();
                 this.responseHeaders = conn.getHeaderFields();
+                // If the HTTP status was an error, the response content is in tne error stream
+                try {
+                    InputStream es = conn.getErrorStream();
+                    if (this.rawStreamCallback != null)
+                        this.rawStreamCallback.onRawStream(es);
+                    else
+                        this.rawContent = getEntityAsString(es, conn.getContentEncoding());
+                } catch (Exception ignore2) {
+                    // No response content
+                }
                 if (!noExceptionOnServerError && (responseCode / 100 != 2)) {
                     throw new RuntimeException(responseCode + " " +
                             responseReasonPhrase);
@@ -430,9 +445,11 @@ public class HttpClient {
                     // Deserialize according to the expected type
                     try {
                         if (deserializedResponseType instanceof Class<?>)
-                            this.responseContent = deserializeAdapter.deserialize(this.rawContent, (Class<?>)deserializedResponseType);
+                            this.responseContent = deserializeAdapter
+                                    .deserialize(this.rawContent, (Class<?>)deserializedResponseType);
                         else
-                            this.responseContent = deserializeAdapter.deserializeRef(this.rawContent, deserializedResponseType);
+                            this.responseContent = deserializeAdapter
+                                    .deserializeRef(this.rawContent, deserializedResponseType);
                     } catch (Exception ex) {
                         throw new RuntimeException(ex);
                     }
@@ -517,6 +534,26 @@ public class HttpClient {
 
 
     /**
+     * Add a query param to send in the request body. Any special char will be left as is.
+     * <p>
+     * Used for POST or PUT requests. Standard does not forbid use with GET
+     * requests, but it's not best practice.
+     *
+     * @param name
+     *            Param name
+     * @param value
+     *            Param value, which will be used as is. Special chars will not be encoded
+     * @return Self for chaining
+     */
+    public final HttpClient addBodyParamNoEncoding(String name, String value) {
+        if (bodyParams == null)
+            bodyParams = new HashMap<String, String>();
+        bodyParams.put(name, value);
+        return this;
+    }
+
+
+    /**
      * Set a param in the URL path of the request.
      * <p>
      * The URL path will be modified by sustituting the param name with its
@@ -591,7 +628,7 @@ public class HttpClient {
      * @return Self for chaining
      */
     public final HttpClient addMultiPartParam(String name, String filename,
-                                              String type, InputStream data) {
+            String type, InputStream data) {
         if (multiPartParams == null)
             multiPartParams = new HashMap<String, MultiPartParam>();
         try {
@@ -690,10 +727,21 @@ public class HttpClient {
         return entity(data);
     }
 
+    
+    /**
+     * Get the request entity, already encoded.
+     * It will be non-null only after the request is made.
+     *
+     * @return Entity body as text
+     */
+    public final String encodedEntity() {
+        return entity;
+    }
+
 
     /**
-     * Set the 'Accept' request header, which specifies the expected type of
-     * the response content.
+     * Set the 'Accept' request header, which specifies the expected type 
+     * of the response content.
      *
      * @param type
      *            Header value
@@ -782,8 +830,8 @@ public class HttpClient {
 
 
     /**
-     * Specify that no exceptions be raised in case the response HTTP status is
-     * an error (i.e. it's not 2XX).
+     * Specify that no exceptions be raised in case the response HTTP 
+     * status is an error (i.e. it's not 2XX).
      *
      * @return Self for chaining
      */
@@ -852,11 +900,47 @@ public class HttpClient {
      *            'http.proxyPassword')
      * @return Self for chaining
      */
-    public final HttpClient proxy(Proxy proxy, String proxyUser,
-                                  String proxyPassword) {
+    public final HttpClient proxy(Proxy proxy, String proxyUser, String proxyPassword) {
         this.proxy = proxy;
         this.proxyUser = proxyUser;
         this.proxyPassword = proxyPassword;
+        this.nonProxyHosts = null;
+        return this;
+    }
+
+
+    /**
+     * Set an HTTP or SOCKS proxy to use for the request.
+     * <p>
+     * A proxy will also be used if the proxy host and port are specified as
+     * system properties, respectively 'http.proxyHost' and 'http.proxyPort'. In
+     * this case the proxy will be of type HTTP. If a proxy is specified in this
+     * way, this method will override it.
+     * <p>
+     * If the proxy requires Basic authorization, the credentials can also be
+     * set here, otherwise leave them null. Credentials can also be specified as
+     * system properties, but this method will override them.
+     *
+     * @param proxy
+     *            Proxy
+     * @param proxyUser
+     *            User (can also be specified as system property
+     *            'http.proxyUser')
+     * @param proxyPassword
+     *            Password (can also be specified as system property
+     *            'http.proxyPassword')
+     * @param nonProxyHosts
+     *            List of hosts for which the proxy should not be used
+     *            (can also be specified as system property
+     *            'http.nonProxyHosts', with hosts separated by '|')
+     * @return Self for chaining
+     */
+    public final HttpClient proxy(Proxy proxy, String proxyUser,
+            String proxyPassword, String[] nonProxyHosts) {
+        this.proxy = proxy;
+        this.proxyUser = proxyUser;
+        this.proxyPassword = proxyPassword;
+        this.nonProxyHosts = nonProxyHosts;
         return this;
     }
 
@@ -872,6 +956,34 @@ public class HttpClient {
     }
 
 
+    /**
+     * Check if using a proxy is allowed for this url.
+     * A proxy can be used only for hosts that are not in the
+     * list of non-proxy hosts.
+     *
+     * @return True if using a proxy is allowed
+     */
+    public boolean isProxyAllowed() {
+        boolean canUseProxy = true;
+        if (nonProxyHosts == null) {
+            String nonProxyHostsProp = System.getProperty("http.nonProxyHosts");
+            if (nonProxyHostsProp != null && !nonProxyHostsProp.isEmpty()) {
+                nonProxyHosts = nonProxyHostsProp.split("\\|");
+            }
+        }
+        if (nonProxyHosts != null) {
+            String host = url.getHost();
+            for (String nph : nonProxyHosts) {
+                if (host.equals(nph)) {
+                    canUseProxy = false;
+                    break;
+                }
+            }
+        }
+        return canUseProxy;
+    }
+
+    
     /**
      * Set a SSLContext to use for HTTPS requests. The SSLContext must be
      * already initialized (with a call to init()).

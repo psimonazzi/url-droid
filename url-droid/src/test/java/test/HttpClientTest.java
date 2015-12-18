@@ -2,6 +2,7 @@ package test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 import it.idsolutions.util.HttpClient;
 
 import java.io.IOException;
@@ -21,7 +22,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.net.URL;
+
 
 public class HttpClientTest {
     private HttpServer httpServer;
@@ -34,7 +35,7 @@ public class HttpClientTest {
 
     @Test
     public void testVersion() {
-        assertTrue(!HttpClient.VERSION.isEmpty());
+        assertFalse(new HttpClient("http://localhost") == null);//assertFalse(HttpClient.VERSION.isEmpty());
     }
 
     @Test
@@ -66,8 +67,7 @@ public class HttpClientTest {
         assertEquals(HttpURLConnection.HTTP_OK, c.code());
         assertEquals("Test", c.responseHeaders().get("Server").get(0));
         
-        Thread.sleep(200);
-        
+        Thread.sleep(200);    
     }
     
     
@@ -231,6 +231,9 @@ public class HttpClientTest {
                 is.close();
 
                 exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_METHOD, 0);
+                String response = "err";
+                exchange.getResponseBody().write(response.getBytes());
+                exchange.getResponseBody().close();
                 exchange.close();
             }
         });
@@ -242,6 +245,7 @@ public class HttpClientTest {
                 .noExceptions()
                 .put();
         assertEquals(HttpURLConnection.HTTP_BAD_METHOD, c.code());
+        assertEquals("err", (String)c.content());
         
         Thread.sleep(200);
     }
@@ -369,6 +373,55 @@ public class HttpClientTest {
         c.addQueryParam("z", "2 3");
         String url2 = c.url();
         assertEquals("http://example.com/path/_?a=1&x=y&z=2+3", url2);
+    }
+
+
+    @Test
+    public void testEntity() throws Exception {
+        InetSocketAddress address = new InetSocketAddress(3006);
+        httpServer = HttpServer.create(address, 0);
+        
+        httpServer.createContext("/entity", new HttpHandler() {
+            @Override
+            public void handle(HttpExchange exchange) throws IOException {
+                assertEquals("POST", exchange.getRequestMethod());
+                String response = "entity";
+
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, 0);
+                exchange.getResponseBody().write(response.getBytes());
+                exchange.getResponseBody().close();
+                exchange.close();
+            }
+        });
+        httpServer.start();
+        
+        HttpClient c = new HttpClient("http://localhost:" + 3006 + "/entity")
+                .addBodyParam("p1", "\u20AC")
+                .addBodyParamNoEncoding("p2", "[\u20AC]")
+                .addBodyParam("x", "y")
+                .addBodyParam("a", "1");
+        assertEquals(null, c.encodedEntity());
+        c.post();
+        assertEquals(HttpURLConnection.HTTP_OK, c.code());
+        assertTrue(c.encodedEntity().contains("p1=%E2%82%AC"));
+        assertTrue(c.encodedEntity().contains("p2=[\u20AC]"));
+        assertTrue(c.encodedEntity().contains("a=1"));
+        assertTrue(c.encodedEntity().contains("x=y"));
+        assertTrue(c.encodedEntity().contains("&"));
+
+        Thread.sleep(200);
+    }
+
+
+    @Test
+    public void testNoProxyHosts() throws Exception {
+        HttpClient c = new HttpClient("http://example.com/path/_?a=1&x=y")
+            .proxy(null, null, null, new String[] { "proxy.it", "example.com" });
+        assertFalse(c.isProxyAllowed());
+
+        HttpClient c2 = new HttpClient("http://example2.com/path")
+            .proxy(null, null, null, new String[] { "proxy.it", "example.com" });
+        assertTrue(c2.isProxyAllowed());
     }
 
 }
