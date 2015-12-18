@@ -1,9 +1,9 @@
 rootProject.name = 'url-droid-jsonorg'
 
 def subprojects = [
-  [name:':url-droid', path:'../url-droid']
+    [name:':url-droid', path:'../url-droid']
 ]
 subprojects.each { p ->
-  include new File(p.path).name
-  project(p.name).projectDir = new File(p.path)
+    include p.name
+    project(p.name).projectDir = new File(p.path)
 }

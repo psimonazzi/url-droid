@@ -7,11 +7,11 @@ targetCompatibility = "1.6"
 version = '2.0.2'
 
 repositories {
-  mavenCentral()
+    jcenter()
 }
 
 dependencies {
-  compile project(':url-droid')
-  compile files(fileTree(dir: 'lib', includes: ['*.jar']))
-  testCompile 'junit:junit:4.11'
+    compile project(':url-droid')
+    compile files(fileTree(dir: 'lib', includes: ['*.jar']))
+    testCompile 'junit:junit:4.11'
 }

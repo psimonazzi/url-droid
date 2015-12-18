@@ -4,79 +4,73 @@ sourceCompatibility = "1.6"
 targetCompatibility = "1.6"
 [compileJava, compileTestJava]*.options*.encoding = "UTF-8"
 
-version = '2.0.4'
+version = '2.1.0'
+
+ext.buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Date())
+
 
 repositories {
-  mavenCentral()
+    jcenter()
 }
+
 
 dependencies {
-  testCompile 'junit:junit:4.11'
+    testCompile 'junit:junit:4.11'
 }
 
 
-task sourcesAndClassesJar(type: Jar, dependsOn: classes) {
-  classifier = 'sources'
-  from(sourceSets.main.allSource) {
-     exclude '**/app.properties'
-  }
-  
-  from sourceSets.main.output.classesDir
-  // if we don't have app.properties to rewrite we could use this
-  //from sourceSets.main.allSource
+tasks.withType(Jar) {
+    manifest = project.manifest {
+        attributes(
+            "Application-Version": version,
+            "Implementation-Version": version,
+            "Build-Timestamp": project.ext.buildTimestamp,
+            "Min-Java-Version": sourceCompatibility
+        )
+    }
 }
 
-// also copy source files in jar
-// jar {
-//   from sourceSets.main.allSource
-// }
-
-task javadocJar(type: Jar, dependsOn: javadoc) {
-  classifier = 'javadoc'
-  from javadoc.destinationDir
-}
-
-artifacts {
-  archives sourcesAndClassesJar
-  //archives javadocJar
-}
-
-Date buildTimeAndDate = new Date()
-ext {
-  buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(buildTimeAndDate)
-}
 
 // Replace tokens with values in a properties file to be used by the app
-// processResources {
-//   from(sourceSets.main.resources.srcDirs) {
-//     include '**/app.properties'
-//     filter(org.apache.tools.ant.filters.ReplaceTokens,
-//            tokens: [
-//              version: project.version,
-//              gradleVersion: project.gradle.gradleVersion,
-//              buildTimestamp: project.ext.buildTimestamp
-//            ])
-//   }
-// }
-// or use this if we also want a jar with sources
 afterEvaluate {
-  //TODO get list of tasks automatically
-  // if (tasks['sourcesAndClassesJar'])...
-  configure([processResources, sourcesAndClassesJar]) {
-    from(sourceSets.main.allSource) {
-      include '**/app.properties'
-      filter(org.apache.tools.ant.filters.ReplaceTokens,
-             tokens: [
-               version: project.version,
-               gradleVersion: project.gradle.gradleVersion,
-               buildTimestamp: project.ext.buildTimestamp
-             ])
+    configure([processResources, sourcesJar]) {
+        from(sourceSets.main.resources.srcDirs) {
+            include '**/app.properties'
+            filter(org.apache.tools.ant.filters.ReplaceTokens,
+                tokens: [
+                    version: project.version,
+                    buildTimestamp: project.ext.buildTimestamp
+                ])
+        }
     }
-  }
 }
 
 
-task wrapper(type: Wrapper,
-             description: 'Creates and deploys the Gradle wrapper to the current directory.') {
-  gradleVersion = '2.2'
+task sourcesJar(type: Jar, dependsOn: classes,
+    description: 'Create a jar that also includes sources') {
+    classifier = 'sources'
+    from sourceSets.main.output.classesDir
+    from(sourceSets.main.allSource) {
+        exclude '**/app.properties'
+    }
 }
+
+
+task javadocJar(type: Jar, dependsOn: javadoc,
+    description: 'Create javadoc jar') {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+
+// build additional artifacts
+artifacts {
+    archives jar
+    archives sourcesJar
+    archives javadocJar
+}
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+}
+
