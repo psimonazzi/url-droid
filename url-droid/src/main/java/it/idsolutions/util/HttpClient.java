@@ -94,6 +94,7 @@ public class HttpClient {
     private SSLContext sslContext;
     private HostnameVerifier hostnameVerifier;
     private DataAdapter deserializeAdapter;
+    private String userAgent;
 
 
     /**
@@ -324,8 +325,11 @@ public class HttpClient {
             // HttpUrlConnection?)
             conn.setUseCaches(true);
 
-            setHeader("User-Agent", "UrlDroid/" +
-                    conn.getClass().getName() + "/" + VERSION);
+            if (userAgent != null)
+                setHeader("User-Agent", userAgent);
+            else
+                setHeader("User-Agent", "UrlDroid/" +
+                          conn.getClass().getName() + "/" + VERSION);
 
             if (multiPartParams != null && !multiPartParams.isEmpty() &&
                     "POST".equalsIgnoreCase(method)) {
@@ -660,6 +664,20 @@ public class HttpClient {
         if (headers == null)
             headers = new HashMap<String, String>();
         headers.put(name, value);
+        return this;
+    }
+
+
+    /**
+     * Set user agent. If set, this value overrides the default
+     * User Agent header (lib name + version).
+     *
+     * @param userAgent
+     *            User agent
+     * @return Self for chaining
+     */
+    public final HttpClient userAgent(String userAgent) {
+        this.userAgent = userAgent;
         return this;
     }
 

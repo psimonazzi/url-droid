@@ -4,7 +4,7 @@ sourceCompatibility = "1.6"
 targetCompatibility = "1.6"
 [compileJava, compileTestJava]*.options*.encoding = "UTF-8"
 
-version = '2.1.0'
+version = '2.2.0'
 
 ext.buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Date())
 
@@ -71,6 +71,6 @@ artifacts {
 }
 
 tasks.withType(JavaCompile) {
-    options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+    options.compilerArgs << "-Xlint:cast" << "-Xlint:finally" << "-Xlint:overrides" << "-Xlint:path" << "-Xlint:deprecation"
 }
 
