@@ -20,10 +20,13 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
+import java.util.jar.Attributes;
+import java.util.jar.JarFile;
+import java.util.jar.Manifest;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -34,8 +37,8 @@ import javax.net.ssl.X509TrustManager;
 
 
 /**
- * A wrapper around HttpURLConnection, which is the API to make HTTP requests on
- * Android officially recommended by Google.
+ * A wrapper around HttpURLConnection, which is the API to make HTTP 
+ * requests on Android officially recommended by Google.
  * <p>
  * Supports the JSON format for serializing/deserializing content, Gzip
  * compression, Basic auth, HTTPS, HTTP and SOCKS proxies.
@@ -50,18 +53,30 @@ public class HttpClient {
     public static String BUILD;
     static {
         try {
-            Properties props = new Properties();
-            props.load(HttpClient.class.getClassLoader().getResourceAsStream("app.properties"));
-            VERSION = props.getProperty("application.version");
-            BUILD = props.getProperty("application.build");
+            Enumeration<URL> resources = HttpClient.class.getClassLoader()
+                    .getResources(JarFile.MANIFEST_NAME);
+            if (resources != null) {
+                while (resources.hasMoreElements()) {
+                    URL url = resources.nextElement();
+                    Manifest manifest = new Manifest(url.openStream());
+                    Attributes attrs = manifest.getMainAttributes();
+                    String title = attrs.getValue("Implementation-Title");
+                    if (title != null && title.equals(HttpClient.class.getName())) {
+                        // This is our manifest
+                        VERSION = attrs.getValue("Implementation-Version");
+                        BUILD = attrs.getValue("Build-Timestamp");
+                    }
+                }
+            }
         } catch (Exception ignore) {
             VERSION = "";
             BUILD = "";
         }
     }
-    public static final String APPLICATION_JSON_UTF8 =
-            "application/json; charset=UTF-8";
-    public static final String APPLICATION_FORM_URLENCODED_UTF8 =
+    
+    public static final String APPLICATION_JSON_UTF8 = 
+            "application/json";
+    public static final String APPLICATION_FORM_URLENCODED_UTF8 = 
             "application/x-www-form-urlencoded; charset=UTF-8";
     public static final int DEFAULT_TIMEOUT_MS = 20000;
     public static final String MULTIPART_BOUNDARY =
@@ -107,8 +122,7 @@ public class HttpClient {
      * #addPathParam(String,String). Path params are specified as '{name}',
      * i.e.: <code>'/resource/{id}/1'</code>.
      *
-     * @param url
-     *            The request URL, alredy encoded
+     * @param url The request URL, alredy encoded
      */
     public HttpClient(String url) {
         try {
@@ -243,6 +257,7 @@ public class HttpClient {
             // either the OkHttp implementation
             // (http://square.github.io/okhttp/)
             // if available, or the system default implementation
+            //TODO OkHttp does not support this anymore
             Class<?> c;
             try {
                 c = Class.forName("com.squareup.okhttp.OkHttpClient");
@@ -252,19 +267,17 @@ public class HttpClient {
             if (c != null) {
                 Object okHttp = c.newInstance();
                 if (proxy != null)
-                    c.getMethod("setProxy", Proxy.class)
-                            .invoke(okHttp, proxy);
+                    c.getMethod("setProxy", Proxy.class).invoke(okHttp, proxy);
                 conn = (HttpURLConnection) c.getMethod("open", URL.class)
                         .invoke(okHttp, new URL(actualUrl));
             }
             else {
                 // this does no network IO
-                if (proxy == null)
-                    conn = (HttpURLConnection) new URL(actualUrl)
-                            .openConnection();
-                else
-                    conn = (HttpURLConnection) new URL(actualUrl)
-                            .openConnection(proxy);
+                if (proxy == null) {
+                    conn = (HttpURLConnection) new URL(actualUrl).openConnection();
+                } else {
+                    conn = (HttpURLConnection) new URL(actualUrl).openConnection(proxy);
+                }
             }
 
             conn.setConnectTimeout(timeoutMillis);
@@ -308,34 +321,29 @@ public class HttpClient {
                     ((HttpsURLConnection) conn).setHostnameVerifier(
                             new HostnameVerifier() {
                                 @Override
-                                public boolean verify(
-                                        String arg0, SSLSession arg1) {
+                                public boolean verify(String arg0, SSLSession arg1) {
                                     // Allow all
                                     return true;
                                 }
                             });
                 }
                 else {
-                    ((HttpsURLConnection) conn)
-                            .setHostnameVerifier(hostnameVerifier);
+                    ((HttpsURLConnection) conn).setHostnameVerifier(hostnameVerifier);
                 }
             }
 
-            // Enable cache via HttpResponseCache (it's a no-op for
-            // HttpUrlConnection?)
+            // Enable cache via HttpResponseCache (it's a no-op for HttpUrlConnection?)
             conn.setUseCaches(true);
 
             if (userAgent != null)
                 setHeader("User-Agent", userAgent);
             else
-                setHeader("User-Agent", "UrlDroid/" +
-                          conn.getClass().getName() + "/" + VERSION);
+                setHeader("User-Agent", "UrlDroid/" + conn.getClass().getName() + "/" + VERSION);
 
             if (multiPartParams != null && !multiPartParams.isEmpty() &&
                     "POST".equalsIgnoreCase(method)) {
                 // override content-type if we have multipart data
-                setHeader("Content-Type",
-                        "multipart/form-data;boundary=" + MULTIPART_BOUNDARY);
+                setHeader("Content-Type", "multipart/form-data;boundary=" + MULTIPART_BOUNDARY);
             }
 
             if (headers != null) {
@@ -373,16 +381,16 @@ public class HttpClient {
                 for (MultiPartParam p : multiPartParams.values()) {
                     String multiPartHeaders =
                             "Content-Disposition:form-data;" +
-                                    "name=\"" + p.getName() + "\"" +
-                                    (p.getFilename() != null ?
-                                            ";filename=\"" + p.getFilename()
-                                                    + "\"" : "") +
-                                    "\r\n" +
-                                    "Content-Type: " +
-                                    (p.getType() != null ?
-                                            p.getType()
-                                            : "application/octet-stream") +
-                                    "\r\n";
+                            "name=\"" + p.getName() + "\"" +
+                            (p.getFilename() != null ? 
+                                    ";filename=\"" + p.getFilename() + "\"" 
+                                    : "") +
+                            "\r\n" +
+                            "Content-Type: " +
+                            (p.getType() != null ?
+                                    p.getType()
+                                    : "application/octet-stream") +
+                            "\r\n";
                     os.writeBytes("--" + MULTIPART_BOUNDARY + "\r\n");
                     os.writeBytes(multiPartHeaders + "\r\n");
                     if (p.getData() == null && p.getValue() != null) {
@@ -392,8 +400,7 @@ public class HttpClient {
                     else {
                         // data is an inputstream, buffer write
                         int bytesAvailable = p.getData().available();
-                        int bufferSize = Math
-                                .min(bytesAvailable, maxBufferSize);
+                        int bufferSize = Math.min(bytesAvailable, maxBufferSize);
                         byte[] buffer = new byte[bufferSize];
                         int read = p.getData().read(buffer, 0, bufferSize);
                         while (read > 0) {
@@ -432,7 +439,7 @@ public class HttpClient {
                 try {
                     InputStream es = conn.getErrorStream();
                     if (this.rawStreamCallback != null)
-                        this.rawStreamCallback.onRawStream(es);
+                        this.rawStreamCallback.onRawErrorStream(es);
                     else
                         this.rawContent = getEntityAsString(es, conn.getContentEncoding());
                 } catch (Exception ignore2) {
@@ -477,8 +484,8 @@ public class HttpClient {
         // If cache support is enabled we may get a 304 status, which should be
         // handled in the exception catch
         if (!noExceptionOnServerError && (responseCode / 100 != 2)) {
-            throw new RuntimeException(responseCode + " "
-                    + responseReasonPhrase);
+            throw new RuntimeException(
+                    responseCode + " " + responseReasonPhrase);
         }
 
         return this;
@@ -543,10 +550,8 @@ public class HttpClient {
      * Used for POST or PUT requests. Standard does not forbid use with GET
      * requests, but it's not best practice.
      *
-     * @param name
-     *            Param name
-     * @param value
-     *            Param value, which will be used as is. Special chars will not be encoded
+     * @param name Param name
+     * @param value Param value, which will be used as is. Special chars will not be encoded
      * @return Self for chaining
      */
     public final HttpClient addBodyParamNoEncoding(String name, String value) {
@@ -563,11 +568,9 @@ public class HttpClient {
      * The URL path will be modified by sustituting the param name with its
      * value.
      *
-     * @param name
-     *            Param name, specified in the path as '{name}'
-     * @param value
-     *            Param value, which will be encoded according to RFC3986 (which
-     *            obsoletes RFC2396) with charset UTF-8
+     * @param name Param name, specified in the path as '{name}'
+     * @param value Param value, which will be encoded according to RFC3986 (which
+     *     obsoletes RFC2396) with charset UTF-8
      * @return Self for chaining
      */
     public final HttpClient addPathParam(String name, String value) {
@@ -844,6 +847,14 @@ public class HttpClient {
          * @param in The response stream
          */
         void onRawStream(final InputStream in);
+        
+        /**
+         * Called on the response stream when it is received, in case
+         * the HTTP response status is an error.
+         * 
+         * @param err The response stream
+         */
+        void onRawErrorStream(final InputStream err);
     }
 
 
@@ -1124,12 +1135,12 @@ public class HttpClient {
 
 
     /**
-     * Read the response content in a string. This method tries to decode the
-     * content according to the specified encoding, which is UTF-8 by default.
+     * Read the response content in a string. This method tries to decode 
+     * the content according to the specified encoding, which is UTF-8 by 
+     * default.
      *
      * @return Self for chaining
-     * @throws Exception
-     *             When the content cannot be read or decoded
+     * @throws Exception When the content cannot be read or decoded
      */
     private String getEntityAsString(InputStream responseEntity,
             String encoding) throws Exception {
@@ -1222,6 +1233,9 @@ public class HttpClient {
     }
 
 
+    /**
+     * Interface for serialize/deserialize adapters.
+     */
     public interface DataAdapter {
         String serialize(Object content);
         <T> T deserialize(String content, Class<T> type);

@@ -32,11 +32,7 @@ public class HttpClientTest {
         if (httpServer != null)
             httpServer.stop(0);
     }
-
-    @Test
-    public void testVersion() {
-        assertFalse(new HttpClient("http://localhost") == null);//assertFalse(HttpClient.VERSION.isEmpty());
-    }
+    
 
     @Test
     public void testPathParam() throws Exception {
@@ -353,6 +349,11 @@ public class HttpClientTest {
                         } catch (Exception ex) {
                             throw new RuntimeException(ex);
                         }
+                    }
+                    
+                    @Override
+                    public void onRawErrorStream(final InputStream err) {
+                        throw new RuntimeException("should not happen");
                     }
                 })
                 .get();
