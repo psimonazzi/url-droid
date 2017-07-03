@@ -3,3 +3,4 @@ build/
 /url-droid-jackson/.nb-gradle/
 /url-droid-jsonorg/.nb-gradle/
 /url-droid/.nb-gradle/
+/url-droid-okhttp/.nb-gradle/
