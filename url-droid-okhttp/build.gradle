@@ -1,0 +1,73 @@
+apply plugin: 'java'
+
+sourceCompatibility = "8"
+targetCompatibility = "8"
+[compileJava, compileTestJava]*.options*.encoding = "UTF-8"
+
+version = '3.0.0'
+
+ext.buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Date())
+
+
+repositories {
+    jcenter()
+}
+
+
+dependencies {
+    compile project(':url-droid')
+    
+    testCompile 'junit:junit:4.12'
+}
+
+ext.appManifest = manifest {
+    attributes(
+        "Application-Version": version,
+        "Implementation-Title": "it.idsolutions.util.HttpClient",
+        "Implementation-Version": version,
+        "Build-Timestamp": project.ext.buildTimestamp,
+        "Min-Java-Version": sourceCompatibility,
+        'Source-Compatibility': project.sourceCompatibility,
+        'Target-Compatibility': project.targetCompatibility
+    )
+}
+tasks.withType(Jar) { manifest = project.manifest { from appManifest } }
+
+// Add SNAPSHOT to the version unless we are doing a release
+// Do a release with option -Prelease=true
+gradle.taskGraph.whenReady { taskGraph ->
+    if (!project.hasProperty('release')) {
+        version = version + '-SNAPSHOT'
+        // Update version in manifest
+        ext.appManifest.attributes["Application-Version"] = version
+        ext.appManifest.attributes["Implementation-Version"] = version
+    }
+}
+
+
+task sourcesJar(type: Jar, dependsOn: classes,
+    description: 'Create a jar that also includes sources') {
+    classifier = 'sources'
+    from sourceSets.main.output.classesDir
+    from sourceSets.main.allSource
+}
+
+
+task javadocJar(type: Jar, dependsOn: javadoc,
+    description: 'Create javadoc jar') {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+
+// build additional artifacts
+artifacts {
+    archives jar
+    archives sourcesJar
+    archives javadocJar
+}
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs << "-Xlint:cast" << "-Xlint:finally" << "-Xlint:overrides" << "-Xlint:path" << "-Xlint:deprecation"
+}
+
