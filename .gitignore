@@ -1,5 +1,6 @@
 build/
 .gradle
+.idea
 /url-droid-jackson/.nb-gradle/
 /url-droid-jsonorg/.nb-gradle/
 /url-droid/.nb-gradle/
