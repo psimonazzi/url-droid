@@ -18,10 +18,16 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 
 public class HttpClientTest {
@@ -248,6 +254,55 @@ public class HttpClientTest {
     
     
     @Test
+    public void testErrorStatus404() throws Exception {
+        InetSocketAddress address = new InetSocketAddress(3003);
+        httpServer = HttpServer.create(address, 0);
+        
+        httpServer.createContext("/testError", new HttpHandler() {
+            @Override
+            public void handle(HttpExchange exchange) throws IOException {
+                /*System.out.println("Request: ");
+                System.out.println(exchange.getRequestMethod() + " "
+                        + exchange.getRequestURI());
+                Headers requestHeaders = exchange.getRequestHeaders();
+                for (Entry<String, List<String>> header : requestHeaders.entrySet()) {
+                    System.out.println(header.getKey() + ": "
+                            + header.getValue());
+                }*/
+                assertEquals("PUT", exchange.getRequestMethod());
+                assertEquals("/testError", exchange.getRequestURI().getPath());
+                assertEquals(HttpClient.APPLICATION_JSON_UTF8,
+                        exchange.getRequestHeaders().get("Content-Type").get(0));
+                int b;
+                StringBuilder buf = new StringBuilder();
+                InputStream is = exchange.getRequestBody();
+                while ((b = is.read()) != -1) {
+                    buf.append((char) b);
+                }
+                is.close();
+
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_NOT_FOUND, 0);
+                String response = "err";
+                exchange.getResponseBody().write(response.getBytes());
+                exchange.getResponseBody().close();
+                exchange.close();
+            }
+        });
+        httpServer.start();
+        
+        HttpClient c = new HttpClient("http://localhost:" + 3003 + "/testError")
+                .contentType(HttpClient.APPLICATION_JSON_UTF8)
+                .entity("{\"test\":true}")
+                .noExceptions()
+                .put();
+        assertEquals(HttpURLConnection.HTTP_NOT_FOUND, c.code());
+        assertEquals("err", (String)c.content());
+        
+        Thread.sleep(200);
+    }
+    
+    
+    @Test
     public void testMultipart() throws Exception {
         InetSocketAddress address = new InetSocketAddress(3004);
         httpServer = HttpServer.create(address, 0);
@@ -327,7 +382,7 @@ public class HttpClientTest {
         HttpClient c = new HttpClient("http://localhost:" + 3005 + "/stream")
                 .rawStreamCallback(new HttpClient.RawStreamCallback() {
                     @Override
-                    public void onRawStream(final InputStream in) {
+                    public void onRawStream(final int code, final InputStream in) {
                         try {
                             Writer writer = null;
                             Reader reader = null;
@@ -352,7 +407,7 @@ public class HttpClientTest {
                     }
                     
                     @Override
-                    public void onRawErrorStream(final InputStream err) {
+                    public void onRawErrorStream(final int code, final InputStream err) {
                         throw new RuntimeException("should not happen");
                     }
                 })
@@ -409,6 +464,7 @@ public class HttpClientTest {
         assertTrue(c.encodedEntity().contains("a=1"));
         assertTrue(c.encodedEntity().contains("x=y"));
         assertTrue(c.encodedEntity().contains("&"));
+        httpServer.stop(0);
 
         Thread.sleep(200);
     }
@@ -424,5 +480,48 @@ public class HttpClientTest {
             .proxy(null, null, null, new String[] { "proxy.it", "example.com" });
         assertTrue(c2.isProxyAllowed());
     }
+    
+    
+    @Test
+    public void testCompression() throws Exception {
+        InetSocketAddress address = new InetSocketAddress(3009);
+        httpServer = HttpServer.create(address, 0);
+        
+        httpServer.createContext("/gzip", new HttpHandler() {
+            @Override
+            public void handle(HttpExchange exchange) throws IOException {
+                assertEquals("POST", exchange.getRequestMethod());
+                assertEquals("gzip",
+                        exchange.getRequestHeaders().get("Content-Encoding").get(0));
 
+                String response = "gzipped";
+
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, 0);
+                exchange.getResponseBody().write(response.getBytes());
+                exchange.getResponseBody().close();
+                exchange.close();
+            }
+        });
+        httpServer.start();
+        
+        HttpClient c = new HttpClient("http://localhost:" + 3009 + "/gzip")
+                .addBodyParam("p1", "\u20AC")
+                .addBodyParamNoEncoding("p2", "[\u20AC]")
+                .addBodyParam("x", "y")
+                .addBodyParam("a", "1")
+                .compressRequest(true);
+        assertEquals(null, c.encodedEntity());
+        c.post();
+        assertEquals(HttpURLConnection.HTTP_OK, c.code());
+        assertTrue(c.encodedEntity().contains("p1=%E2%82%AC"));
+        assertTrue(c.encodedEntity().contains("p2=[\u20AC]"));
+        assertTrue(c.encodedEntity().contains("a=1"));
+        assertTrue(c.encodedEntity().contains("x=y"));
+        assertTrue(c.encodedEntity().contains("&"));
+        
+        Thread.sleep(200);
+        
+        httpServer.stop(0);
+    }
+    
 }
