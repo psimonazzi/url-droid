@@ -4,7 +4,7 @@ sourceCompatibility = "1.6"
 targetCompatibility = "1.6"
 [compileJava, compileTestJava]*.options*.encoding = "UTF-8"
 
-version = '2.0.3'
+version = '2.4.0'
 
 repositories {
     jcenter()
@@ -13,10 +13,10 @@ repositories {
 dependencies {
     compile project(':url-droid')
     //compile files(fileTree(dir: 'lib', includes: ['*.jar']))
-    compile 'com.fasterxml.jackson.core:jackson-databind:2.6.+'
-    compile 'com.fasterxml.jackson.core:jackson-core:2.6.+'
-    compile 'com.fasterxml.jackson.core:jackson-annotations:2.6.+'
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.7.6'
+    compile 'com.fasterxml.jackson.core:jackson-core:2.7.6'
+    compile 'com.fasterxml.jackson.core:jackson-annotations:2.7.6'
     
     
-    testCompile 'junit:junit:4.11'
+    testCompile 'junit:junit:4.12'
 }

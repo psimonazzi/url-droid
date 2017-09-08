@@ -1,0 +1,12 @@
+
+def subprojects = [
+    [name:':url-droid', path:'url-droid'],
+    [name:':url-droid-jackson', path:'url-droid-jackson'],
+    [name:':url-droid-jsonorg', path:'url-droid-jsonorg']
+]
+subprojects.each { p ->
+    include p.name
+    project(p.name).projectDir = new File(p.path)
+}
+
+

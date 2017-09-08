@@ -4,7 +4,7 @@ sourceCompatibility = "1.6"
 targetCompatibility = "1.6"
 [compileJava, compileTestJava]*.options*.encoding = "UTF-8"
 
-version = '2.3.0'
+version = '2.4.6'
 
 ext.buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Date())
 
@@ -15,7 +15,7 @@ repositories {
 
 
 dependencies {
-    testCompile 'junit:junit:4.11'
+    testCompile 'junit:junit:4.12'
 }
 
 ext.appManifest = manifest {
@@ -31,21 +31,13 @@ ext.appManifest = manifest {
 }
 tasks.withType(Jar) { manifest = project.manifest { from appManifest } }
 
-// Add SNAPSHOT to the version unless we are doing a release
-gradle.taskGraph.whenReady { taskGraph ->
-    if (!project.hasProperty('release') || !taskGraph.hasTask(release)) {
-        version = version + '-SNAPSHOT'
-        // Update version in manifest
-        ext.appManifest.attributes["Application-Version"] = version
-        ext.appManifest.attributes["Implementation-Version"] = version
-    }
-}
-
 
 task sourcesJar(type: Jar, dependsOn: classes,
     description: 'Create a jar that also includes sources') {
     classifier = 'sources'
-    from sourceSets.main.output.classesDir
+    
+    if (gradle.gradleVersion < '4.0') from sourceSets.main.output.classesDir
+    else from sourceSets.main.output.classesDirs
     from sourceSets.main.allSource
 }
 
@@ -54,12 +46,6 @@ task javadocJar(type: Jar, dependsOn: javadoc,
     description: 'Create javadoc jar') {
     classifier = 'javadoc'
     from javadoc.destinationDir
-}
-
-
-task release(dependsOn: "build",
-        description: 'Release a production version, not a snapshot') << {
-    println '*** ' + project.name + ' release v' + version + ' ***'
 }
 
 
