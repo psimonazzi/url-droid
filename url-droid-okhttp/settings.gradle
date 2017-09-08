@@ -1,9 +1,0 @@
-rootProject.name = 'url-droid-okhttp'
-
-def subprojects = [
-    [name:':url-droid', path:"$svnRepoPath/home/trunk/software/url-droid/url-droid"]
-]
-subprojects.each { p ->
-    include p.name
-    project(p.name).projectDir = new File(p.path)
-}
